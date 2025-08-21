@@ -1,1 +1,0 @@
-Nur Febriana Bakri - D121231082
