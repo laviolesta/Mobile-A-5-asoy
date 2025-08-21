@@ -1,4 +1,4 @@
-Ini untuk projek di semester 5 untukmata kuliah Pemrograman Mobile
+Ini untuk projek di semester 5 pada mata kuliah Pemrograman Mobile
 
 Kelompok Mobile A 5:
 1. Naura Arundaya: D121231007
