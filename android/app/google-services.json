@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "395525310408",
+    "project_id": "sewami-92617",
+    "storage_bucket": "sewami-92617.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:395525310408:android:89664e82bb384bab4562fd",
+        "android_client_info": {
+          "package_name": "com.example.apk_sewami"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASRdJu-yZ6xlVrRPMNNd2XW-0lVFqxCYA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
