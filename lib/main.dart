@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // <--- INI WAJIB ADA
-import 'welcome_page.dart';
+import 'services/firebase_options.dart'; // <--- INI WAJIB ADA
+import 'pages/welcome_page.dart';
 import 'services/auth_service.dart';
+import 'pages/home_page.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 4. Wajib ada
@@ -29,7 +31,8 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      home: const WelcomePage(), // Menambahkan const agar lebih efisien
+
+      home: const HomePage(), // Menambahkan const agar lebih efisien
     );
   }
 }
