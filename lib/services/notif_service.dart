@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../model/notif_item.dart';
+import '../models/notif_item.dart';
 
 class NotificationService {
   static Future<List<NotificationItem>> fetchNotifications() async {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import './model/notif_item.dart';
+import 'models/notif_item.dart';
 import './services/notif_service.dart';
 import './widget/notif_card.dart';
 

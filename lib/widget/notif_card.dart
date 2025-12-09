@@ -64,11 +64,6 @@ class NotificationCard extends StatelessWidget {
               ],
             ),
           ),
-
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.close),
-          ),
         ],
       ),
     );
