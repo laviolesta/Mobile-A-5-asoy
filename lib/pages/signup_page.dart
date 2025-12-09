@@ -123,7 +123,7 @@ class _SignupPageState extends State<SignupPage> {
                             children: [
                               _buildFloatingLabelInput("Nama Lengkap", _namaController),
                               const SizedBox(height: 20),
-                              _buildFloatingLabelInput("Email Kampus", _emailController, keyboardType: TextInputType.emailAddress),
+                              _buildFloatingLabelInput("Email Kampus (@student.unhas.ac.id)", _emailController, keyboardType: TextInputType.emailAddress),
                               const SizedBox(height: 20),
                               _buildFloatingLabelInput("NIM", _nimController, keyboardType: TextInputType.number),
                               const SizedBox(height: 20),

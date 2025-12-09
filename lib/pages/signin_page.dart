@@ -134,7 +134,11 @@ class _SigninPageState extends State<SigninPage> {
                     ),
                     const SizedBox(height: 40),
 
-                    _buildFloatingLabelInput("Email Kampus", _emailController),
+                    _buildFloatingLabelInput(
+                      "Email Kampus (@student.unhas.ac.id)", // Beri petunjuk di sini
+                      _emailController,
+                    ),
+
                     const SizedBox(height: 20),
                     _buildFloatingLabelInput(
                       "Password",
