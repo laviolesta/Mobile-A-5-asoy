@@ -9,8 +9,8 @@ class AuthService {
   Future<String?> signIn({required String email, required String password}) async {
     try {
       // [TAMBAHAN] Validasi Email Unhas di Pintu Masuk
-      if (!email.endsWith('@unhas.ac.id')) {
-        return 'Gunakan email kampus (@unhas.ac.id)!';
+      if (!email.endsWith('@student.unhas.ac.id')) {
+        return 'Gunakan email kampus (@student.unhas.ac.id)!';
       }
 
       await _auth.signInWithEmailAndPassword(
@@ -46,8 +46,8 @@ class AuthService {
   }) async {
     try {
       // [SUDAH ADA] Validasi Email Unhas di Pendaftaran
-      if (!email.endsWith('@unhas.ac.id')) {
-        return 'Wajib menggunakan email kampus (@unhas.ac.id)!';
+      if (!email.endsWith('@student.unhas.ac.id')) {
+        return 'Wajib menggunakan email kampus (@student.unhas.ac.id)!';
       }
 
       // 1. Buat Akun Auth
@@ -86,8 +86,8 @@ class AuthService {
   Future<String?> resetPassword({required String email}) async {
     try {
       // Validasi juga di sini biar aman
-      if (!email.endsWith('@unhas.ac.id')) {
-        return 'Gunakan email kampus (@unhas.ac.id)!';
+      if (!email.endsWith('@student.unhas.ac.id')) {
+        return 'Gunakan email kampus (@student.unhas.ac.id)!';
       }
       
       await _auth.sendPasswordResetEmail(email: email.trim());
