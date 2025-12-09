@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class UserModel {
   // Field data yang sesuai dengan requirement profil
   final String id; // ID dokumen Firebase (atau UID user)
-  final String nama;
+  final String nama_lengkap;
   final String email;
   final String nim;
   final String fakultas;
@@ -13,7 +13,7 @@ class UserModel {
 
   const UserModel({
     required this.id,
-    required this.nama,
+    required this.nama_lengkap,
     required this.email,
     required this.nim,
     required this.fakultas,
@@ -28,7 +28,7 @@ class UserModel {
     // Lakukan pengecekan null dan penanganan tipe data yang aman
     return UserModel(
       id: doc.id,
-      nama: data?['nama'] as String? ?? 'N/A',
+      nama_lengkap: data?['nama_lengkap'] as String? ?? 'N/A',
       email: data?['email'] as String? ?? 'N/A',
       nim: data?['nim'] as String? ?? 'N/A',
       fakultas: data?['fakultas'] as String? ?? 'N/A',
@@ -40,12 +40,14 @@ class UserModel {
   // --- 2. Method untuk konversi ke Map/JSON (untuk disimpan ke Firebase) ---
   Map<String, dynamic> toFirestore() {
     return {
-      'nama': nama,
+      'uid': id,
+      'nama_lengkap': nama_lengkap,
       'email': email,
       'nim': nim,
       'fakultas': fakultas,
       'jurusan': jurusan,
       'no_whatsapp': no_whatsapp,
+      'created_at': FieldValue.serverTimestamp(),
     };
   }
 }

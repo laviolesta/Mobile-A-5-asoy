@@ -5,6 +5,7 @@ import '../models/user_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  // ignore: unused_field
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // --- FUNGSI LOGIN ---
@@ -44,12 +45,12 @@ class AuthService {
 
       final newUser = UserModel(
       id: uid,
-      nama: nama,
+      nama_lengkap: nama,
       email: email,
       nim: nim,
       fakultas: fakultas,
       jurusan: jurusan,
-      no_whatsapp: noWhatsapp, // Menggunakan field 'no_whatsapp' sesuai model
+      no_whatsapp: noWhatsapp,
     );
 
       await UserService().createNewUser(newUser);

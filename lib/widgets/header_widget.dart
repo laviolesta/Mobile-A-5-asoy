@@ -35,7 +35,7 @@ class HeaderWidget extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const ProfilePage(),
+                    builder: (context) => ProfilePage(),
                   ),
                 );
               },
