@@ -12,12 +12,58 @@ class NotifikasiPage extends StatefulWidget {
 
 class _NotifikasiPageState extends State<NotifikasiPage> {
 
-  late Future<List<NotificationItem>> futureNotifications;
+  List<NotificationItem> _notifications = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    futureNotifications = NotificationService.fetchNotifications();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final data = await NotificationService.fetchNotifications();
+      setState(() {
+        _notifications = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _deleteItem(int index) async {
+    final itemToDelete = _notifications[index];
+
+    try {
+      // 1. Hapus dari Firestore
+      await NotificationService.deleteNotification(itemToDelete.id);
+
+      // 2. Hapus dari List lokal dan update UI
+      setState(() {
+        _notifications.removeAt(index);
+      });
+
+      // Optional: Tampilkan konfirmasi
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("${itemToDelete.title} dihapus")),
+      );
+    } catch (e) {
+      // Jika gagal hapus, masukkan lagi notifikasi ke list jika sempat terhapus
+      // Dan tampilkan pesan error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal menghapus: $e")),
+      );
+    }
   }
 
   @override
@@ -46,45 +92,51 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
         ),
       ),
 
-      body: FutureBuilder<List<NotificationItem>>(
-        future: futureNotifications,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(child: Text("Error: $_errorMessage"))
+              : _notifications.isEmpty
+                  ? const Center(child: Text("Tidak ada notifikasi"))
+                  : RefreshIndicator( // Pull-to-refresh
+                      onRefresh: _fetchData, // Panggil _fetchData saat ditarik
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _notifications.length,
+                        itemBuilder: (context, index) {
+                          final item = _notifications[index];
 
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text("Gagal memuat notifikasi"),
-            );
-          }
+                          // Swipe-to-delete
+                          return Dismissible( 
+                            key: Key(item.id), // Kunci unik (penting untuk Dismissible)
+                            direction: DismissDirection.endToStart, // Hanya dari kanan ke kiri
+                            
+                            // Background saat di-swipe
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20.0),
+                              color: Colors.red,
+                              child: const Icon(Icons.delete, color: Colors.white),
+                            ),
+                            
+                            // Dipanggil saat item di-swipe hingga hilang
+                            onDismissed: (direction) {
+                              _deleteItem(index); // Panggil fungsi hapus
+                            },
 
-          final notifications = snapshot.data ?? [];
-
-          if (notifications.isEmpty) {
-            return const Center(
-              child: Text("Tidak ada notifikasi"),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: notifications.length,
-            itemBuilder: (context, index) {
-              final item = notifications[index];
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: NotificationCard(
-                  title: item.title,
-                  description: item.description,
-                  onDetailTap: () {},
-                ),
-              );
-            },
-          );
-        },
-      ),
+                            // Child yang akan di-swipe (NotificationCard)
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: NotificationCard(
+                                title: item.title,
+                                description: item.description,
+                                onDetailTap: () {},
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
 
       bottomNavigationBar: Container(
         height: 70,

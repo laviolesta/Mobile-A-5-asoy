@@ -1,5 +1,5 @@
 class NotificationItem {
-  final int id;
+  final String id;
   final String title;
   final String description;
 
@@ -11,9 +11,9 @@ class NotificationItem {
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
     return NotificationItem(
-      id: json["id"],
-      title: json["title"],
-      description: json["description"],
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
     );
   }
 }

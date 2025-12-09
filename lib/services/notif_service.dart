@@ -10,13 +10,27 @@ class NotificationService {
 
       // Konversi snapshot ke list NotificationItem
       List<NotificationItem> notifications = snapshot.docs.map((doc) {
-        // doc.data() adalah Map<String, dynamic>
-        return NotificationItem.fromJson(doc.data() as Map<String, dynamic>);
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+        data['id'] = doc.id;
+        return NotificationItem.fromJson(data);
       }).toList();
 
       return notifications;
     } catch (e) {
       throw Exception("Failed to load notifications: $e");
+    }
+  }
+
+  static Future<void> deleteNotification(String notificationId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(notificationId)
+          .delete();
+      print("Notifikasi dengan ID $notificationId berhasil dihapus.");
+    } catch (e) {
+      throw Exception("Failed to delete notification: $e");
     }
   }
 }
