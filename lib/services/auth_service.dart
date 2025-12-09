@@ -57,7 +57,21 @@ class AuthService {
       return "Gagal mendaftar: $e";
     }
   }
-
+  // --- FUNGSI RESET PASSWORD ---
+  Future<String?> resetPassword({required String email}) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null; // Berhasil (Email terkirim)
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        return 'Email tidak terdaftar.';
+      }
+      return e.message;
+    } catch (e) {
+      return "Terjadi kesalahan: $e";
+    }
+  }
+  
   // --- LOGOUT ---
   Future<void> signOut() async {
     await _auth.signOut();
