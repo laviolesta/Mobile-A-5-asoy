@@ -117,13 +117,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       "Lupa\nSandi?",
                       textAlign: TextAlign.left,
                       style: GoogleFonts.inter(
-                        fontSize: 40,
+                        fontSize: 70,
                         fontWeight: FontWeight.bold,
                         color: colorTitle,
                         height: 1.0,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 30),
                     Text(
                       "Masukkan email yang terdaftar. Kami akan mengirimkan link untuk mereset kata sandi Anda.",
                       style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
