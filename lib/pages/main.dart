@@ -30,6 +30,10 @@ class MyApp extends StatelessWidget {
       ),
 
       home: const WelcomePage(), // Menambahkan const agar lebih efisien
+
+        routes: {
+          '/welcome': (context) => const WelcomePage(),
+        }
     );
   }
 }

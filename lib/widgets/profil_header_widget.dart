@@ -9,6 +9,7 @@ class ProfileHeaderWidget extends StatelessWidget {
   final String jurusan;
   final String no_whatsapp;
   final VoidCallback onEditWaTap; // Fungsi yang akan dipanggil saat tombol Edit WA diklik
+  final VoidCallback onEditPhotoTap;
 
   const ProfileHeaderWidget({
     super.key,
@@ -19,6 +20,7 @@ class ProfileHeaderWidget extends StatelessWidget {
     required this.jurusan,
     required this.no_whatsapp,
     required this.onEditWaTap,
+    required this.onEditPhotoTap,
   });
 
   @override
@@ -37,9 +39,7 @@ class ProfileHeaderWidget extends StatelessWidget {
                 child: Icon(Icons.person, size: 40, color: Colors.white),
               ),
               GestureDetector(
-                onTap: () {
-                  // Fungsi Edit Foto (saat ini kosong)
-                },
+                onTap: onEditPhotoTap, // 🔥 PANGGIL CALLBACK BARU DI ICON PENSIL
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
