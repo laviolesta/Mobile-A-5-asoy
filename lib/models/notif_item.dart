@@ -6,6 +6,7 @@ class NotificationItem {
   final String description;
   final bool isRead;
   final DateTime? createdAt;
+  final String? productId;
 
   NotificationItem({
     required this.id,
@@ -13,6 +14,7 @@ class NotificationItem {
     required this.description,
     this.isRead = false,
     this.createdAt,
+    this.productId,
   });
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
@@ -20,7 +22,6 @@ class NotificationItem {
     DateTime? parseDateTime(dynamic value) {
       if (value == null) return null;
       if (value is DateTime) return value;
-      // Asumsi Firestore menggunakan Timestamp
       if (value is Timestamp) {
         return value.toDate();
       }
@@ -35,8 +36,8 @@ class NotificationItem {
       title: json['title'] as String,
       description: json['description'] as String,
       isRead: json.containsKey('isRead') ? json['isRead'] as bool : false,
-      // BARU: Parsing createdAt dari Timestamp Firestore
       createdAt: parseDateTime(json['createdAt']), 
+      productId: json['productId'] as String?,
     );
   }
 
@@ -48,6 +49,7 @@ class NotificationItem {
     String? description,
     bool? isRead,
     DateTime? createdAt,
+    String? productId,
   }) {
     return NotificationItem(
       id: id ?? this.id,
@@ -55,6 +57,7 @@ class NotificationItem {
       description: description ?? this.description,
       isRead: isRead ?? this.isRead, // <-- Digunakan untuk mengubah status dibaca
       createdAt: createdAt ?? this.createdAt,
+      productId: productId ?? this.productId,
     );
   }
 }

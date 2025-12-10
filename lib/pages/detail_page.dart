@@ -5,9 +5,10 @@ import 'owner_profile_page.dart';
 
 // Import services
 import '../../services/product_service.dart';
-import '../../services/user_service.dart'; // ⬅️ IMPORT USER SERVICE
+import '../../services/user_service.dart';
+import '../../services/notif_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // ⬅️ IMPORT FIREBASE AUTH
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Import Halaman Tujuan
 import 'sewa/sewa_page.dart';
@@ -82,6 +83,7 @@ class _DetailPageState extends State<DetailPage> {
 
   Future<void> _toggleLike() async {
     final productId = widget.product['id'] as String?;
+    final ownerId = widget.product['ownerId'] as String;
     final currentUserId = _auth.currentUser?.uid; // ⬅️ AMBIL USER ID
 
     if (productId == null) return;
@@ -92,6 +94,13 @@ class _DetailPageState extends State<DetailPage> {
         const SnackBar(
           content: Text('Anda harus login untuk menyukai produk.'),
         ),
+      );
+      return;
+    }
+
+    if (currentUserId == ownerId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anda tidak bisa menyukai produk Anda sendiri.')),
       );
       return;
     }
@@ -114,8 +123,26 @@ class _DetailPageState extends State<DetailPage> {
     final userSuccess = await _userService.toggleLike(currentUserId, productId);
 
     // Cek keberhasilan kedua operasi
-    if (productSuccess && userSuccess == null) {
-      // userSuccess null = berhasil
+    if (isLiked) { // Notifikasi hanya dikirim saat aksi LIKE (isLiked = true)
+        
+        // 1. Ambil nama user yang baru saja menyukai
+        final likerName = await _getCurrentUserName();
+        final productName = widget.product["name"] ?? 'Produk Tidak Diketahui';
+
+        try {
+            await NotificationService.createNotification( // Panggil NotificationService
+                title: "Produk Anda Disukai!",
+                description: "$likerName menyukai produk Anda: $productName.",
+                userId: ownerId, // Targetkan ke pemilik produk
+                productId: productId, // Berikan ID produk untuk tautan cepat
+            );
+        } catch (e) {
+            print("Gagal mengirim notifikasi like ke pemilik: $e");
+            // Notifikasi gagal, tapi proses like utama tetap sukses
+        }
+    }
+
+    if (productSuccess && userSuccess == null) { // userSuccess null = berhasil
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(isLiked ? 'Produk disukai' : 'Suka dibatalkan')),
       );
@@ -142,11 +169,27 @@ class _DetailPageState extends State<DetailPage> {
     if (await canLaunchUrl(whatsapp)) {
       await launchUrl(whatsapp, mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Gagal membuka WhatsApp')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal membuka WhatsApp')),
+      );
     }
   }
+
+  Future<String> _getCurrentUserName() async {
+  final currentUserId = _auth.currentUser?.uid;
+  if (currentUserId == null) {
+    return 'Pengguna Tidak Terautentikasi';
+  }
+
+  try {
+    final userData = await _userService.getUserData(currentUserId);
+    
+    return userData?['nama_lengkap'] ?? 'Pengguna #${currentUserId.substring(0, 5)}';
+  } catch (e) {
+    print("Error mengambil data pengguna: $e");
+    return 'Pengguna Anonim';
+  }
+}
 
   void _showRentDialog() async {
     final DateTimeRange? pickedDate = await showDateRangePicker(
@@ -195,10 +238,9 @@ class _DetailPageState extends State<DetailPage> {
         builder: (context) => AlertDialog(
           title: const Text("Konfirmasi Penyewaan"),
           content: Text(
-            "Anda menyewa produk dari ${start.day}/${start.month}/${start.year} "
-            "sampai ${end.day}/${end.month}/${end.year} "
-            "(${duration} hari)",
-          ),
+              "Anda menyewa produk dari ${start.day}/${start.month}/${start.year} "
+              "sampai ${end.day}/${end.month}/${end.year} "
+              "($duration hari)"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -217,6 +259,22 @@ class _DetailPageState extends State<DetailPage> {
                 );
 
                 if (mounted) {
+                  if (result == null) {
+                    final currentUserName = await _getCurrentUserName();
+                    final productName = widget.product["name"] ?? 'Produk Tidak Diketahui';
+
+                    try {
+                      await NotificationService.createNotification(
+                        title: "Permintaan Sewa Baru: $productName",
+                        description: "$currentUserName telah mengajukan permintaan sewa untuk produk Anda selama $duration hari. Silakan cek halaman Sewa untuk konfirmasi.",
+                        userId: ownerId,
+                        productId: productId,
+                      );
+                    } catch (e) {
+                      print("Gagal mengirim notifikasi ke pemilik: $e"); 
+                    }
+                  }
+
                   if (result == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(

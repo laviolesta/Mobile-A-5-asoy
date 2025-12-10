@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user_model.dart';
 import 'user_service.dart';
+import 'notif_service.dart';
+import '../models/user_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -78,6 +79,17 @@ class AuthService {
     );
 
       await UserService().createNewUser(newUser);
+
+      try {
+      await NotificationService.createNotification(
+        title: "Selamat Datang di SewaMi!",
+        description: "Halo $nama, akun Anda berhasil didaftarkan. Anda dapat mulai menyewa dan mengelola produk Anda sekarang.",
+        userId: uid,
+      );
+    } catch (e) {
+      // Penting: Jangan gagalkan proses sign up jika notifikasi gagal.
+      print("Warning: Gagal membuat notifikasi sambutan: $e");
+    }
 
       return null;
     } on FirebaseAuthException catch (e) {

@@ -8,6 +8,7 @@ import '../widgets/header_widget.dart';import '../widgets/bottom_navbar.dart';
 import '../utils/no_animation_route.dart';
 import 'home_page.dart';
 import 'sewa/sewa_page.dart';
+import 'notif_detail_page.dart';
 
 class NotifikasiPage extends StatefulWidget {
   const NotifikasiPage({super.key});
@@ -159,21 +160,34 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
 
   // --- LOGIC: TANDAI SUDAH DIBACA (DIMODIFIKASI UNTUK copyWith) ---
   Future<void> _markAsReadAndNavigate(NotificationItem item, int index) async {
-    if (item.isRead) {
-      // return Navigator.of(context).push(...); 
-      return; 
+    bool shouldNavigate = true;
+    NotificationItem itemToPass = item;
+
+    // 1. Lakukan Mark as Read jika belum dibaca
+    if (!item.isRead) {
+      try {
+        await NotificationService.markAsRead(item.id);
+        
+        // Update state di halaman ini
+        setState(() {
+          itemToPass = item.copyWith(isRead: true); // Gunakan copyWith
+          _notifications[index] = itemToPass; // Update item di list
+        });
+      } catch (e) {
+        shouldNavigate = false; // Jangan navigasi jika gagal update status baca
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal menandai dibaca: $e")),
+        );
+      }
     }
-    try {
-      await NotificationService.markAsRead(item.id);
-      
-      // Menggunakan copyWith untuk update yang lebih aman dan ringkas
-      setState(() {
-        _notifications[index] = item.copyWith(isRead: true); // <--- MENGGUNAKAN copyWith
-      });
-      // Navigator.of(context).push(...);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal menandai dibaca: $e")),
+
+    // 2. Navigasi ke Halaman Detail jika berhasil (atau sudah dibaca)
+    if (shouldNavigate) {
+      // Navigasi ke NotifDetailPage
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => NotifDetailPage(notification: itemToPass), // Teruskan item yang telah di-update
+        ),
       );
     }
   }
@@ -230,7 +244,6 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                   title: item.title,
                   description: item.description,
                   isRead: item.isRead, 
-                  onDetailTap: () {},
                 ),
               ),
             ),
@@ -244,7 +257,6 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       // 1. HEADER DARI KODE LAMA
-      // 1. HEADER DARI KODE LAMA
       body: Column(
         children: [
           const HeaderWidget(title: "Notifikasi"),
@@ -253,8 +265,6 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
           ),
         ],
       ),
-      
-      // 2. BOTTOM NAV BAR DARI KODE LAMA
       
       // 2. BOTTOM NAV BAR DARI KODE LAMA
       bottomNavigationBar: BottomNavBar(

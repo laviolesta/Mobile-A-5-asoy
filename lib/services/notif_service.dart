@@ -76,6 +76,7 @@ class NotificationService {
     required String title,
     required String description,
     required String userId, // Target user
+    String? productId,
   }) async {
     try {
       await FirebaseFirestore.instance.collection('notifications').add({
@@ -84,6 +85,7 @@ class NotificationService {
         'description': description,
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
+        'productId': productId,
       });
     } catch (e) {
       throw Exception("Failed to create notification: $e");
