@@ -8,6 +8,7 @@ import '../widgets/header_widget.dart';import '../widgets/bottom_navbar.dart';
 import '../utils/no_animation_route.dart';
 import 'home_page.dart';
 import 'sewa/sewa_page.dart';
+import 'notif_detail_page.dart';
 
 class NotifikasiPage extends StatefulWidget {
   const NotifikasiPage({super.key});
@@ -159,44 +160,37 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
 
   // --- LOGIC: TANDAI SUDAH DIBACA (DIMODIFIKASI UNTUK copyWith) ---
   Future<void> _markAsReadAndNavigate(NotificationItem item, int index) async {
-    // 1. Tandai Dibaca (Hanya jika belum dibaca)
+    bool shouldNavigate = true;
+    NotificationItem itemToPass = item;
+
+    // 1. Lakukan Mark as Read jika belum dibaca
     if (!item.isRead) {
-        try {
-            // Asumsi NotificationService.markAsRead(item.id) ada dan berfungsi
-            await NotificationService.markAsRead(item.id); 
-            
-            // Update state secara lokal menggunakan copyWith
-            if (mounted) {
-                setState(() {
-                    _notifications[index] = item.copyWith(isRead: true); 
-                });
-            }
-        } catch (e) {
-            if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Gagal menandai dibaca: $e")),
-                );
-            }
-            // Lanjutkan navigasi meskipun gagal update status baca, karena user sudah klik
-        }
+      try {
+        await NotificationService.markAsRead(item.id);
+        
+        // Update state di halaman ini
+        setState(() {
+          itemToPass = item.copyWith(isRead: true); // Gunakan copyWith
+          _notifications[index] = itemToPass; // Update item di list
+        });
+      } catch (e) {
+        shouldNavigate = false; // Jangan navigasi jika gagal update status baca
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal menandai dibaca: $e")),
+        );
+      }
     }
 
-    // 2. Lakukan Navigasi ke Detail Produk
-    if (item.productId != null) {
-        if (mounted) {
-            Navigator.of(context).pushNamed(
-                '/productDetail',
-                arguments: item.productId,
-            );
-        }
-    } else {
-        if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Tidak ada produk terkait.")),
-            );
-        }
+    // 2. Navigasi ke Halaman Detail jika berhasil (atau sudah dibaca)
+    if (shouldNavigate) {
+      // Navigasi ke NotifDetailPage
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => NotifDetailPage(notification: itemToPass), // Teruskan item yang telah di-update
+        ),
+      );
     }
-}
+  }
 
   // --- WIDGET LIST NOTIFIKASI (Sama) ---
   Widget _buildNotificationList() {
