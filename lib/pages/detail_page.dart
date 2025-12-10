@@ -54,7 +54,7 @@ class _DetailPageState extends State<DetailPage> {
           content: Text(
               "Anda menyewa produk dari ${start.day}/${start.month}/${start.year} "
               "sampai ${end.day}/${end.month}/${end.year} "
-              "($duration hari)"),
+              "(${duration} hari)"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
