@@ -12,8 +12,10 @@ import '../notifikasi_page.dart';
 import 'sewakan_page.dart';
 import '../../services/product_service.dart';
 import 'package:intl/intl.dart';
+import '../../services/notif_service.dart'; 
+import '../../services/user_service.dart'; 
+import 'package:firebase_auth/firebase_auth.dart'; 
 
-// ... (RentalHeaderControl tidak berubah) ...
 class RentalHeaderControl extends StatelessWidget {
   final bool isSewakanActive;
 
@@ -122,11 +124,28 @@ class SewaPage extends StatefulWidget {
 
 class _SewaPageState extends State<SewaPage> {
   final ProductService _productService = ProductService();
+  final UserService _userService = UserService(); // <--- INISIALISASI USER SERVICE
+  final FirebaseAuth _auth = FirebaseAuth.instance; // <--- INISIALISASI FIREBASE AUTH
+
   List<String> _likedProducts = [];
 
   late Stream<QuerySnapshot> _currentRentStream;
   late Stream<QuerySnapshot> _rentHistoryStream;
 
+  Future<String> _getCurrentUserName() async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) {
+      return 'Pengguna Tidak Terautentikasi';
+    }
+
+    try {
+      final userData = await _userService.getUserData(currentUserId);
+      return userData?['nama_lengkap'] ?? 'Pengguna #${currentUserId.substring(0, 5)}';
+    } catch (e) {
+      print("Error mengambil data pengguna: $e");
+      return 'Penyewa';
+    }
+  }
 
   @override
   void initState() {
@@ -167,11 +186,31 @@ class _SewaPageState extends State<SewaPage> {
   }
 
   // === FUNGSI KEMBALIKAN PRODUK ===
-  void _handleReturnProduct(BuildContext context, String rentalId, String productName) async {
+  void _handleReturnProduct(BuildContext context, String rentalId, String productId, String productName, String ownerId) async {
+    
     final result = await _productService.processReturn(rentalId);
-
+    
     if (mounted) {
       if (result == null) {
+        
+        // --- LOGIKA NOTIFIKASI PENGEMBALIAN KE PEMILIK ---
+        if (ownerId != 'N/A') {
+            final renterName = await _getCurrentUserName(); 
+
+            try {
+                await NotificationService.createNotification(
+                    title: "Item '$productName' Telah Dikembalikan.",
+                    description: "Item '$productName' telah dikembalikan oleh '$renterName', konfirmasi barang sudah ada di anda. ID Sewa: $rentalId",
+                    userId: ownerId, 
+                    productId: productId,
+                    rentalId: rentalId,
+                );
+            } catch (e) {
+                print("Gagal mengirim notifikasi pengembalian: $e");
+            }
+        }
+        // --- AKHIR LOGIKA NOTIFIKASI ---
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Permintaan pengembalian berhasil diajukan. Menunggu konfirmasi pemilik.')),
         );
@@ -185,41 +224,82 @@ class _SewaPageState extends State<SewaPage> {
 
   // === FUNGSI BARU: BATALKAN SEWA ===
   void _handleCancelRental(BuildContext context, String rentalId, String productId, String productName) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Batalkan Sewa"),
-        content: Text("Anda yakin ingin membatalkan sewa produk '$productName'? Produk akan tersedia kembali."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Batal")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Ya, Batalkan", style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text("Batalkan Sewa"),
+      content: Text("Anda yakin ingin membatalkan sewa produk '$productName'? Produk akan tersedia kembali."),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Batal")),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Ya, Batalkan", style: TextStyle(color: Colors.red))),
+      ],
+    ),
+  );
 
-    if (confirm == true) {
-      final result = await _productService.cancelRental(rentalId, productId);
+  if (confirm == true) {
+    
+    // 1. Ambil data rental/produk untuk mendapatkan Owner ID
+    String? ownerId;
+    try {
+      final rentalDoc = await FirebaseFirestore.instance.collection('rentals').doc(rentalId).get();
+      if (rentalDoc.exists) {
+        // Asumsi ownerId disimpan di dokumen rental
+        ownerId = rentalDoc.data()?['ownerId'] as String?; 
+      }
+    } catch (e) {
+      print("Gagal mendapatkan Owner ID dari rental: $e");
+    }
 
-      if (mounted) {
-        if (result == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Sewa produk $productName berhasil dibatalkan.')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal membatalkan sewa: $result')),
-          );
+    if (ownerId == null) {
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Gagal: ID Pemilik tidak ditemukan.')),
+         );
+       }
+       return;
+    }
+
+
+    // 2. Proses Pembatalan Sewa
+    final result = await _productService.cancelRental(rentalId, productId);
+
+    if (mounted) {
+      if (result == null) {
+        
+        // --- LOGIKA NOTIFIKASI PEMBATALAN SEWA KE PEMILIK ---
+        final renterName = await _getCurrentUserName(); // Ambil nama penyewa
+        
+        try {
+           await NotificationService.createNotification(
+             title: "Sewa Dibatalkan: $productName",
+             description: "$renterName telah membatalkan sewa produk '$productName'. Produk kini tersedia kembali.",
+             userId: ownerId, // <--- Kirim ke pemilik produk
+             productId: productId,
+           );
+        } catch (e) {
+           print("Gagal mengirim notifikasi pembatalan sewa: $e");
         }
+        // --- AKHIR LOGIKA NOTIFIKASI ---
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sewa produk $productName berhasil dibatalkan.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal membatalkan sewa: $result')),
+        );
       }
     }
   }
+}
 
 
   // === CARD PRODUK YANG SEDANG DISEWA ===
   Widget _buildRentedProductCard(BuildContext context, Map<String, dynamic> item) {
     final productData = item['productData'] as Map<String, dynamic>? ?? {};
     final String rentalId = item['id'] ?? 'N/A';
-    final String productId = productData['id'] ?? 'N/A'; // Ambil productId
+    final String productId = productData['id'] ?? 'N/A';
+    final String ownerId = item['ownerId'] ?? 'N/A';
 
     final bool isReturnRequested = item['returnRequested'] as bool? ?? false;
     final bool isProductLiked = _likedProducts.contains(productId);
@@ -417,7 +497,7 @@ class _SewaPageState extends State<SewaPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        onPressed: () => _handleReturnProduct(context, rentalId, name),
+                        onPressed: () => _handleReturnProduct(context, rentalId, productId, name, ownerId),
                         child: const Text('Kembalikan'),
                       ),
 

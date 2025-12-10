@@ -189,15 +189,16 @@ class _DetailPageState extends State<DetailPage> {
 
       final productId = widget.product['id'] as String?;
       final ownerId = widget.product['ownerId'] as String?;
+      final currentUserId = _auth.currentUser?.uid;
 
-      if (productId == null || ownerId == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Error: Data produk atau pemilik tidak lengkap.")),
-          );
-        }
-        return;
+      if (currentUserId == null || productId == null || ownerId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Error: Anda harus login untuk mengajukan sewa.")),
+        );
       }
+      return;
+    }
 
       final productRef = FirebaseFirestore.instance.collection('products').doc(productId);
 
@@ -218,6 +219,9 @@ class _DetailPageState extends State<DetailPage> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
+
+                final ownerPhone = widget.product['ownerPhone'] ?? '6285176882175';
+                final productName = widget.product["name"] ?? 'Produk Tidak Diketahui';
 
                 final result = await _productService.submitRentalRequest(
                   productId: productId,
@@ -242,6 +246,17 @@ class _DetailPageState extends State<DetailPage> {
                     } catch (e) {
                       print("Gagal mengirim notifikasi ke pemilik: $e"); 
                     }
+                  }
+
+                  try {
+                    await NotificationService.createNotification(
+                      title: "Pengajuan Sewa Berhasil",
+                      description: "Permintaan sewa produk '$productName' telah dikirim. Penting: Segera hubungi pemilik ($ownerPhone) via WhatsApp untuk konfirmasi dan detail lebih lanjut.",
+                      userId: currentUserId, // <--- TARGET: PENYEWA
+                      productId: productId,
+                    );
+                  } catch (e) {
+                    print("Gagal mengirim notifikasi ke penyewa: $e");
                   }
 
                   if (result == null) {
