@@ -5,6 +5,8 @@ import '../utils/no_animation_route.dart';
 
 import 'home_page.dart';
 import 'sewa/sewa_page.dart';
+import 'home_page.dart';
+import 'notif_detail_page.dart'; 
 
 class NotifikasiPage extends StatelessWidget {
   const NotifikasiPage({super.key});
