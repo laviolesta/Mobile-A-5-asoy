@@ -106,10 +106,10 @@ class UserService {
   }
 
   // 6. Update daftar produk yang disukai (Digunakan di ProfilePage saat mode Edit)
-  Future<void> updateLikedProducts(String userId, List<Map<String, dynamic>> likedProductIds) async {
+  Future<void> updateLikedProducts(String userId, List<String> liked_products) async {
     try {
       await _firestore.collection(_collection).doc(userId).update({
-        'liked_products': likedProductIds,
+        'liked_products': liked_products,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
