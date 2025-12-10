@@ -4,12 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart'; // <--- PERLU TAMBAHAN IMPORT
 import '../models/notif_item.dart';
 import '../services/notif_service.dart';
 import '../widgets/notif_card.dart';
-import '../widgets/header_widget.dart';
-import '../widgets/bottom_navbar.dart';
+import '../widgets/header_widget.dart';import '../widgets/bottom_navbar.dart';
 import '../utils/no_animation_route.dart';
-import 'sewa/sewa_page.dart';
 import 'home_page.dart';
-import 'notif_detail_page.dart'; 
+import 'sewa/sewa_page.dart';
 
 class NotifikasiPage extends StatefulWidget {
   const NotifikasiPage({super.key});
@@ -30,9 +28,11 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
   
   final ScrollController _scrollController = ScrollController(); 
 
-  // --- LOGIC GET USER ID ---
+  // --- BARU: Mendapatkan ID Pengguna Saat Ini ---
+  // Ganti dengan cara Anda mendapatkan ID pengguna yang sebenarnya jika bukan Firebase Auth!
   String get _currentUserId {
     final user = FirebaseAuth.instance.currentUser;
+    // PENTING: Handle kasus user belum login (bisa dilempar error atau return string kosong)
     if (user == null) {
       throw Exception("User belum login.");
     }
@@ -52,7 +52,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     super.dispose();
   }
 
-  // --- LOGIC NAVIGASI ---
+  // --- LOGIC NAVIGASI (Sama) ---
   void _onNavTapped(BuildContext context, int index) {
     if (index == 2) return;
 
@@ -74,7 +74,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     );
   }
 
-  // --- LOGIC: SCROLL DAN LOAD MORE ---
+  // --- LOGIC: SCROLL DAN LOAD MORE (Sama) ---
   void _onScroll() {
     if (_scrollController.position.pixels >= 
         _scrollController.position.maxScrollExtent * 0.8 &&
@@ -84,7 +84,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     }
   }
 
-  // --- LOGIC: LOAD DATA AWAL ---
+  // --- LOGIC: LOAD DATA AWAL (DIMODIFIKASI UNTUK USER ID) ---
   Future<void> _loadInitialData() async {
     if (_isLoading) return;
     setState(() {
@@ -112,7 +112,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     }
   }
 
-  // --- LOGIC: LOAD MORE DATA ---
+  // --- LOGIC: LOAD MORE DATA (DIMODIFIKASI UNTUK USER ID) ---
   Future<void> _loadMoreData() async {
     if (_isPaginating || !_hasMore) return;
     setState(() {
@@ -139,7 +139,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     }
   }
 
-  // --- LOGIC: DELETE ITEM (SWIPE) ---
+  // --- LOGIC: DELETE ITEM (SWIPE) (Sama) ---
   Future<void> _deleteItem(int index) async {
     final itemToDelete = _notifications[index];
     try {
@@ -157,41 +157,28 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     }
   }
 
-  // --- LOGIC: MARK AS READ & NAVIGATE TO DETAIL ---
+  // --- LOGIC: TANDAI SUDAH DIBACA (DIMODIFIKASI UNTUK copyWith) ---
   Future<void> _markAsReadAndNavigate(NotificationItem item, int index) async {
-    bool shouldNavigate = true;
-    NotificationItem itemToPass = item;
-
-    // Mark as Read jika belum dibaca
-    if (!item.isRead) {
-      try {
-        await NotificationService.markAsRead(item.id);
-        
-        // Update state di halaman ini
-        setState(() {
-          itemToPass = item.copyWith(isRead: true);
-          _notifications[index] = itemToPass; // Update item di list
-        });
-      } catch (e) {
-        shouldNavigate = false; // Jangan navigasi jika gagal update status baca
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal menandai dibaca: $e")),
-        );
-      }
+    if (item.isRead) {
+      // return Navigator.of(context).push(...); 
+      return; 
     }
-
-    // Navigasi ke Halaman Detail
-    if (shouldNavigate) {
-      // Navigasi ke NotifDetailPage
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => NotifDetailPage(notification: itemToPass),
-        ),
+    try {
+      await NotificationService.markAsRead(item.id);
+      
+      // Menggunakan copyWith untuk update yang lebih aman dan ringkas
+      setState(() {
+        _notifications[index] = item.copyWith(isRead: true); // <--- MENGGUNAKAN copyWith
+      });
+      // Navigator.of(context).push(...);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal menandai dibaca: $e")),
       );
     }
   }
 
-  // --- WIDGET LIST NOTIFIKASI ---
+  // --- WIDGET LIST NOTIFIKASI (Sama) ---
   Widget _buildNotificationList() {
     if (_isLoading && _notifications.isEmpty) {
       return const Center(child: CircularProgressIndicator());
