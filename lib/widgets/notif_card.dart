@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 class NotificationCard extends StatelessWidget {
   final String title;
   final String description;
-  final VoidCallback onDetailTap;
   final bool isRead;
 
   const NotificationCard({
     super.key,
     required this.title,
     required this.description,
-    required this.onDetailTap,
     required this.isRead,
   });
 
@@ -52,17 +50,6 @@ class NotificationCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-
-                GestureDetector(
-                  onTap: onDetailTap,
-                  child: const Text(
-                    "Lihat detail",
-                    style: TextStyle(
-                      color: Colors.black,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

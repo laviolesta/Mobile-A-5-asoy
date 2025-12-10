@@ -159,24 +159,44 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
 
   // --- LOGIC: TANDAI SUDAH DIBACA (DIMODIFIKASI UNTUK copyWith) ---
   Future<void> _markAsReadAndNavigate(NotificationItem item, int index) async {
-    if (item.isRead) {
-      // return Navigator.of(context).push(...); 
-      return; 
+    // 1. Tandai Dibaca (Hanya jika belum dibaca)
+    if (!item.isRead) {
+        try {
+            // Asumsi NotificationService.markAsRead(item.id) ada dan berfungsi
+            await NotificationService.markAsRead(item.id); 
+            
+            // Update state secara lokal menggunakan copyWith
+            if (mounted) {
+                setState(() {
+                    _notifications[index] = item.copyWith(isRead: true); 
+                });
+            }
+        } catch (e) {
+            if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Gagal menandai dibaca: $e")),
+                );
+            }
+            // Lanjutkan navigasi meskipun gagal update status baca, karena user sudah klik
+        }
     }
-    try {
-      await NotificationService.markAsRead(item.id);
-      
-      // Menggunakan copyWith untuk update yang lebih aman dan ringkas
-      setState(() {
-        _notifications[index] = item.copyWith(isRead: true); // <--- MENGGUNAKAN copyWith
-      });
-      // Navigator.of(context).push(...);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal menandai dibaca: $e")),
-      );
+
+    // 2. Lakukan Navigasi ke Detail Produk
+    if (item.productId != null) {
+        if (mounted) {
+            Navigator.of(context).pushNamed(
+                '/productDetail',
+                arguments: item.productId,
+            );
+        }
+    } else {
+        if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Tidak ada produk terkait.")),
+            );
+        }
     }
-  }
+}
 
   // --- WIDGET LIST NOTIFIKASI (Sama) ---
   Widget _buildNotificationList() {
@@ -230,7 +250,6 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                   title: item.title,
                   description: item.description,
                   isRead: item.isRead, 
-                  onDetailTap: () {},
                 ),
               ),
             ),

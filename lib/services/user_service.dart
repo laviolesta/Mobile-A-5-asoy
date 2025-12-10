@@ -7,7 +7,6 @@ import 'dart:convert';
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ⚠️ PASTIKAN NILAI INI SUDAH DIGANTI DENGAN KONFIGURASI CLOUDINARY ANDA
   static const String CLOUDINARY_CLOUD_NAME = 'nama_cloud_anda'; 
   static const String CLOUDINARY_UPLOAD_PRESET = 'FLUTTER_PROFILE_PRESET'; 
 
@@ -59,7 +58,7 @@ class UserService {
   // 3. Update Nomor WhatsApp (Menggunakan nama field yang konsisten)
   Future<void> updateNoWhatsapp(String userId, String newNoWhatsapp) async {
     return updateUserData(userId, {
-      'no_whatsapp': newNoWhatsapp, // 🔥 Pastikan field di Firestore adalah 'no_whatsapp'
+      'no_whatsapp': newNoWhatsapp,
     });
   }
 

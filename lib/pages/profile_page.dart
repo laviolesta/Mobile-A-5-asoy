@@ -88,7 +88,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       await _authService.signOut();
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (route) => false);
+        Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (route) => false); 
       }
     } catch (e) {
       _showSnackbar('Gagal melakukan logout: $e');
