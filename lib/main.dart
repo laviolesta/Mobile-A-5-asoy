@@ -12,8 +12,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  await initializeDateFormatting('id', null);
-
   runApp(const MyApp());
 }
 
