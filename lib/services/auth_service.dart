@@ -1,8 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'user_service.dart';
+import '../models/user_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  // ignore: unused_field
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // --- FUNGSI LOGIN (SIGN IN) ---
@@ -58,16 +61,18 @@ class AuthService {
 
       // 2. Simpan Data Profil ke Firestore
       String uid = userCredential.user!.uid;
-      await _firestore.collection('users').doc(uid).set({
-        'uid': uid,
-        'nama_lengkap': nama,
-        'email': email,
-        'nim': nim,
-        'fakultas': fakultas,
-        'jurusan': jurusan,
-        'no_whatsapp': noWhatsapp,
-        'created_at': FieldValue.serverTimestamp(),
-      });
+
+      final newUser = UserModel(
+      id: uid,
+      nama_lengkap: nama,
+      email: email,
+      nim: nim,
+      fakultas: fakultas,
+      jurusan: jurusan,
+      no_whatsapp: noWhatsapp,
+    );
+
+      await UserService().createNewUser(newUser);
 
       return null; // Berhasil
     } on FirebaseAuthException catch (e) {

@@ -33,6 +33,7 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
+  image_picker: ^1.0.4
   cupertino_icons: ^1.0.8
   google_fonts: ^6.3.3
   firebase_core: ^4.2.1
@@ -40,8 +41,12 @@ dependencies:
   cloud_firestore: ^6.1.0
   url_launcher: ^6.2.5
   font_awesome_flutter: ^10.7.0
+<<<<<<< HEAD
   geolocator: ^11.0.0 # Untuk mendapatkan koordinat GPS
   geocoding: ^2.1.1  # Untuk mengubah koordinat menjadi alamat
+=======
+  firebase_storage: 13.0.4
+>>>>>>> ed47c6e5d794e05834b43a45fb88ebd4637fc454
 
 dev_dependencies:
   flutter_test:

@@ -226,7 +226,11 @@ packages:
     source: hosted
     version: "3.3.0"
   firebase_storage:
+<<<<<<< HEAD
     dependency: "direct dev"
+=======
+    dependency: "direct main"
+>>>>>>> ed47c6e5d794e05834b43a45fb88ebd4637fc454
     description:
       name: firebase_storage
       sha256: "3438f38590186010ce76ece683ebf3b842cd637f31f83a13620917d7438a58fd"
@@ -249,6 +253,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.11.0"
+<<<<<<< HEAD
   fixnum:
     dependency: transitive
     description:
@@ -257,6 +262,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+=======
+>>>>>>> ed47c6e5d794e05834b43a45fb88ebd4637fc454
   flutter:
     dependency: "direct main"
     description: flutter
@@ -417,7 +424,11 @@ packages:
     source: hosted
     version: "4.5.4"
   image_picker:
+<<<<<<< HEAD
     dependency: "direct dev"
+=======
+    dependency: "direct main"
+>>>>>>> ed47c6e5d794e05834b43a45fb88ebd4637fc454
     description:
       name: image_picker
       sha256: "784210112be18ea55f69d7076e2c656a4e24949fa9e76429fe53af0c0f4fa320"
