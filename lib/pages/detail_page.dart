@@ -5,7 +5,9 @@ import 'owner_profile_page.dart';
 
 // Import services
 import '../../services/product_service.dart';
+import '../../services/user_service.dart'; // ⬅️ IMPORT USER SERVICE
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ⬅️ IMPORT FIREBASE AUTH
 
 // Import Halaman Tujuan
 import 'sewa/sewa_page.dart';
@@ -29,13 +31,15 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   final ProductService _productService = ProductService();
+  final UserService _userService = UserService(); // ⬅️ INISIALISASI USER SERVICE
+  final FirebaseAuth _auth = FirebaseAuth.instance; // ⬅️ INISIALISASI FIREBASE AUTH
+
   late bool isLiked;
   late int currentLikesCount;
 
   // Stream untuk ulasan (reviews)
   late Stream<QuerySnapshot> _reviewsStream;
 
-  // Data Pemilik (untuk ditampilkan di bagian 'Pemilik')
   String get ownerName => widget.product["ownerName"] ?? "Pemilik Tidak Dikenal";
   String get ownerProfileUrl => widget.product["ownerProfileUrl"] ?? "";
 
@@ -44,11 +48,9 @@ class _DetailPageState extends State<DetailPage> {
     super.initState();
     final productId = widget.product['id'] as String?;
 
-    // Inisialisasi status like dan jumlah likes
     isLiked = productId != null && widget.likedProducts.contains(productId);
     currentLikesCount = widget.product["likesCount"] ?? 0;
 
-    // Inisialisasi Stream Reviews
     if (productId != null) {
       _reviewsStream = _productService.getProductReviews(productId);
     } else {
@@ -58,7 +60,18 @@ class _DetailPageState extends State<DetailPage> {
 
   Future<void> _toggleLike() async {
     final productId = widget.product['id'] as String?;
+    final currentUserId = _auth.currentUser?.uid; // ⬅️ AMBIL USER ID
+
     if (productId == null) return;
+
+    // ⚠️ Guardrail: Cek apakah user sudah login
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anda harus login untuk menyukai produk.')),
+      );
+      return;
+    }
+
 
     final bool wasLiked = isLiked;
 
@@ -68,21 +81,27 @@ class _DetailPageState extends State<DetailPage> {
       currentLikesCount += isLiked ? 1 : -1;
     });
 
-    final success = await _productService.toggleProductLike(productId, isLiked);
+    // 1. Update jumlah likes di dokumen produk
+    final productSuccess = await _productService.toggleProductLike(productId, isLiked);
 
-    if (success) {
+    // 2. Update daftar liked_products di dokumen pengguna
+    final userSuccess = await _userService.toggleLike(currentUserId, productId);
+
+
+    // Cek keberhasilan kedua operasi
+    if (productSuccess && userSuccess == null) { // userSuccess null = berhasil
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(isLiked ? 'Produk disukai' : 'Suka dibatalkan')),
       );
     } else {
-      // Jika gagal, kembalikan state sebelumnya
+      // Jika salah satu gagal, kembalikan state sebelumnya
       if (mounted) {
         setState(() {
           isLiked = wasLiked;
           currentLikesCount += isLiked ? 1 : -1;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal memperbarui status suka')),
+          const SnackBar(content: Text('Gagal memperbarui status suka (Firestore Error)')),
         );
       }
     }
@@ -128,7 +147,6 @@ class _DetailPageState extends State<DetailPage> {
       final productId = widget.product['id'] as String?;
       final ownerId = widget.product['ownerId'] as String?;
 
-      // Safety check sebelum menampilkan dialog konfirmasi
       if (productId == null || ownerId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -156,10 +174,8 @@ class _DetailPageState extends State<DetailPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                // Tutup dialog konfirmasi
                 Navigator.pop(context);
 
-                // Lakukan aksi pengajuan sewa ke Firestore
                 final result = await _productService.submitRentalRequest(
                   productId: productId,
                   startDate: start,
@@ -168,30 +184,21 @@ class _DetailPageState extends State<DetailPage> {
                   productRef: productRef,
                 );
 
-                // --- START DEBUGGING ---
-                // Anda bisa tambahkan ini untuk melihat hasil submit:
-                // print("Submit Rental Result: $result");
-                // --- END DEBUGGING ---
-
                 if (mounted) {
                   if (result == null) {
-                    // SUKSES: Tampilkan notifikasi dan pindah ke SewaPage
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content: Text("Penyewaan berhasil diajukan! Menunggu konfirmasi.")),
                     );
 
-                    // >>> NAVIGASI KE SEWAPAGE <<<
                     Navigator.pushAndRemoveUntil(
                       context,
                       NoAnimationPageRoute(page: const SewaPage()),
-                      // Kunci: Kondisi ini memastikan SewaPage menjadi halaman root baru
                           (route) => false,
                     );
 
 
                   } else {
-                    // GAGAL
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text("Gagal mengajukan penyewaan: $result")),

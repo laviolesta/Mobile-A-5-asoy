@@ -414,7 +414,7 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(
                                 Icons.favorite,
-                                color: isProductLiked ? Colors.red : Colors.grey,
+                                color: Colors.red,
                                 size: 16,
                               ),
                               const SizedBox(width: 6),
