@@ -7,20 +7,32 @@ import 'dart:convert';
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ⚠️ GANTI NILAI INI DENGAN KONFIGURASI CLOUDINARY ANDA
-  static const String CLOUDINARY_CLOUD_NAME = 'nama_cloud_anda'; // Ganti
-  static const String CLOUDINARY_UPLOAD_PRESET = 'FLUTTER_PROFILE_PRESET'; // Ganti
+  // ⚠️ PASTIKAN NILAI INI SUDAH DIGANTI DENGAN KONFIGURASI CLOUDINARY ANDA
+  static const String CLOUDINARY_CLOUD_NAME = 'nama_cloud_anda'; 
+  static const String CLOUDINARY_UPLOAD_PRESET = 'FLUTTER_PROFILE_PRESET'; 
 
   final String _collection = 'users';
 
-  // 1. Stream User
+  Future<void> createNewUser(UserModel user) async {
+    try {
+      await _firestore.collection(_collection).doc(user.id).set(
+        user.toFirestore(), 
+      );
+      print("New user document created successfully for ID: ${user.id}");
+    } catch (e) {
+      print("Error creating user document: $e");
+      rethrow;
+    }
+  }
+
+  // 1. Stream User (Stream data profil)
   Stream<UserModel> streamUser(String userId) {
     final userRef = _firestore.collection(_collection).doc(userId);
     return userRef.snapshots().map((snapshot) {
       if (snapshot.exists) {
         return UserModel.fromFirestore(snapshot);
       } else {
-        // Return model kosong jika dokumen tidak ditemukan
+        // Return model kosong (data 'N/A') jika dokumen tidak ditemukan
         return UserModel(
           id: userId,
           nama_lengkap: 'Pengguna Baru',
@@ -44,10 +56,10 @@ class UserService {
     }
   }
 
-  // 3. Update Nomor WhatsApp
+  // 3. Update Nomor WhatsApp (Menggunakan nama field yang konsisten)
   Future<void> updateNoWhatsapp(String userId, String newNoWhatsapp) async {
     return updateUserData(userId, {
-      'no_whatsapp': newNoWhatsapp,
+      'no_whatsapp': newNoWhatsapp, // 🔥 Pastikan field di Firestore adalah 'no_whatsapp'
     });
   }
 
@@ -94,7 +106,7 @@ class UserService {
   }
 
   // 6. Update daftar produk yang disukai (Digunakan di ProfilePage saat mode Edit)
-  Future<void> updateLikedProducts(String userId, List<String> likedProductIds) async {
+  Future<void> updateLikedProducts(String userId, List<Map<String, dynamic>> likedProductIds) async {
     try {
       await _firestore.collection(_collection).doc(userId).update({
         'liked_products': likedProductIds,

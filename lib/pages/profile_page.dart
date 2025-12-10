@@ -6,7 +6,6 @@ import '../widgets/product_card_widget.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
-import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
