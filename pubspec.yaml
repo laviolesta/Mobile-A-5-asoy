@@ -41,6 +41,8 @@ dependencies:
   cloud_firestore: ^6.1.0
   url_launcher: ^6.2.5
   font_awesome_flutter: ^10.7.0
+  geocoding: ^4.0.0
+  geolocator: ^14.0.2
 
 dev_dependencies:
   flutter_test:
