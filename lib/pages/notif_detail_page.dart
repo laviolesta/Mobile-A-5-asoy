@@ -1,24 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/notif_item.dart';
+import '../services/product_service.dart';
+import 'detail_page.dart';
 
 class NotifDetailPage extends StatelessWidget {
   final NotificationItem notification;
+  final ProductService _productService = ProductService();
 
-  const NotifDetailPage({super.key, required this.notification});
+  NotifDetailPage({super.key, required this.notification});
 
   // Fungsi pembantu untuk memformat DateTime
   String _formatDate(DateTime? date) {
-    if (date == null) {
-      return "Tanggal tidak tersedia";
-    }
-    // Format tanggal dan waktu ke bahasa Indonesia
+    if (date == null) return "Tanggal tidak tersedia";
     final formatter = DateFormat('EEEE, dd MMMM yyyy, HH:mm', 'id');
-    return formatter.format(date.toLocal()); // Gunakan .toLocal() jika tanggal disimpan di UTC
+    return formatter.format(date.toLocal());
+  }
+
+  // Fungsi Mengambil data produk dan navigasi ---
+  Future<void> _navigateToProductDetail(BuildContext context) async {
+    final productId = notification.productId;
+    if (productId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("ID Produk tidak ditemukan.")),
+      );
+      return;
+    }
+
+    try {
+      // Panggil service untuk mengambil data produk lengkap
+      final productData = await _productService.getProductById(productId);
+
+      if (productData != null) {
+        // Navigasi ke DetailPage
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailPage(
+              product: productData,
+              isOwnerView: true,
+              likedProducts: const [],
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Produk tidak ditemukan atau sudah dihapus.")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal memuat detail produk: $e")),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isRentRequest = notification.title.startsWith("Permintaan Sewa Baru");
+
     return Scaffold(
 
       appBar: AppBar(
@@ -79,6 +119,27 @@ class NotifDetailPage extends StatelessWidget {
               'ID: ${notification.id}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
+
+            if (isRentRequest && notification.productId != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _navigateToProductDetail(context),
+                    icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white),
+                    label: const Text(
+                      "Lihat Produk yang Disewa",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E355D),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
