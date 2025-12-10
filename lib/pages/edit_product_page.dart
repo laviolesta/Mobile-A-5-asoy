@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Contoh data produk yang akan diedit
 const Map<String, dynamic> dummyProductToEdit = {
   "name": "Almamater Unhas",
   "price": "3.000",
   "category": "Pakaian",
-  "description": "Almamater Unhas adalah almamater yang digunakan oleh Universitas Hasanuddin. Ukuran almamaternya adalah L. Kondisi almamater masih bagus.",
+  "description":
+      "Almamater Unhas adalah almamater yang digunakan oleh Universitas Hasanuddin. Ukuran almamaternya adalah L. Kondisi almamater masih bagus.",
   "address": "Gowa, Bontomarannu, Jl. Kelapa",
   "image_path": "assets/almamater.png", // Asumsi path gambar
 };
@@ -35,7 +37,9 @@ class _EditProductPageState extends State<EditProductPage> {
     // Inisialisasi controller dengan data produk yang masuk
     nameController = TextEditingController(text: widget.product["name"]);
     priceController = TextEditingController(text: widget.product["price"]);
-    descriptionController = TextEditingController(text: widget.product["description"]);
+    descriptionController = TextEditingController(
+      text: widget.product["description"],
+    );
     addressController = TextEditingController(text: widget.product["address"]);
     selectedCategory = widget.product["category"];
   }
@@ -49,36 +53,61 @@ class _EditProductPageState extends State<EditProductPage> {
     super.dispose();
   }
 
-  void _saveChanges() {
-    // Logika untuk menyimpan perubahan produk
-    if (nameController.text.isEmpty || priceController.text.isEmpty || selectedCategory.isEmpty) {
+  void _saveChanges() async {
+    if (nameController.text.isEmpty ||
+        priceController.text.isEmpty ||
+        selectedCategory.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Mohon lengkapi semua bidang utama.')),
       );
       return;
     }
 
-    // Tampilkan notifikasi berhasil (simulasi)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Produk "${nameController.text}" berhasil diperbarui!')),
-    );
-    
-    // Kembali ke halaman sebelumnya (misal: SewakanPage)
-    Navigator.pop(context);
+    // Siapkan data update
+    final updatedData = {
+      "name": nameController.text,
+      "price": priceController.text,
+      "category": selectedCategory,
+      "description": descriptionController.text,
+      "address": addressController.text,
+      // tambahkan field lain sesuai Firestore
+    };
+
+    try {
+      // PENTING: Panggil service untuk update Firestore
+      await FirebaseFirestore.instance
+          .collection("products")
+          .doc(widget.product["id"]) // pastikan ada id
+          .update(updatedData);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Produk "${nameController.text}" berhasil diperbarui!'),
+        ),
+      );
+
+      // Kembali ke SewakanPage
+      Navigator.pop(context, updatedData);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal update produk: $e')));
+    }
   }
 
   // Simulasi pengambilan lokasi saat ini
   void _getCurrentLocation() {
-    addressController.text = "Gowa, Bonto Marannu, Jl. Kelapa (Lokasi Baru)"; // Contoh lokasi baru
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lokasi saat ini dimuat.')),
-    );
+    addressController.text =
+        "Gowa, Bonto Marannu, Jl. Kelapa (Lokasi Baru)"; // Contoh lokasi baru
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Lokasi saat ini dimuat.')));
   }
 
   @override
   Widget build(BuildContext context) {
     // Lebar yang harus diseimbangkan (IconButton default width + padding)
-    const double balancingSpaceWidth = 48.0 + 8.0; 
+    const double balancingSpaceWidth = 48.0 + 8.0;
 
     return Scaffold(
       // Bungkus dengan SafeArea agar header tidak tertutup status bar
@@ -87,7 +116,9 @@ class _EditProductPageState extends State<EditProductPage> {
           children: [
             // === AREA HEADER DIBUAT INLINE ===
             Padding(
-              padding: const EdgeInsets.only(left: 8.0), // Padding di kiri untuk IconButton
+              padding: const EdgeInsets.only(
+                left: 8.0,
+              ), // Padding di kiri untuk IconButton
               child: Row(
                 children: [
                   // 1. Tombol Kembali
@@ -97,27 +128,28 @@ class _EditProductPageState extends State<EditProductPage> {
                       Navigator.pop(context); // Navigasi kembali
                     },
                   ),
-                  
+
                   // 2. Judul (Di Tengah)
                   const Expanded(
                     child: Center(
                       child: Text(
                         "Edit Produk",
                         style: TextStyle(
-                          fontSize: 20, // Sesuaikan ukuran font sesuai desain HeaderWidget lama
+                          fontSize:
+                              20, // Sesuaikan ukuran font sesuai desain HeaderWidget lama
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
-                  
+
                   // 3. Spacer Kosong (Di Kanan) - Untuk menyeimbangkan Tombol Kembali
                   const SizedBox(width: balancingSpaceWidth),
                 ],
               ),
             ),
+
             // =========================================
-            
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
@@ -131,7 +163,10 @@ class _EditProductPageState extends State<EditProductPage> {
                       controller: nameController,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -152,10 +187,20 @@ class _EditProductPageState extends State<EditProductPage> {
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               // Hanya menggunakan Icon sebagai placeholder karena path asset tidak tersedia
-                              child: const Center(child: Icon(Icons.photo, size: 40, color: Colors.brown)),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.photo,
+                                  size: 40,
+                                  color: Colors.brown,
+                                ),
+                              ),
                             )
                           : const Center(
-                              child: Icon(Icons.add_a_photo, size: 30, color: Colors.grey),
+                              child: Icon(
+                                Icons.add_a_photo,
+                                size: 30,
+                                color: Colors.grey,
+                              ),
                             ),
                     ),
                     const SizedBox(height: 16),
@@ -166,7 +211,10 @@ class _EditProductPageState extends State<EditProductPage> {
                     DropdownButtonFormField<String>(
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                       ),
                       value: selectedCategory,
                       items: categories.map((String category) {
@@ -192,7 +240,10 @@ class _EditProductPageState extends State<EditProductPage> {
                       decoration: const InputDecoration(
                         prefixText: "Rp ",
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -204,7 +255,8 @@ class _EditProductPageState extends State<EditProductPage> {
                       controller: descriptionController,
                       maxLines: 4,
                       decoration: const InputDecoration(
-                        hintText: "Deskripsikan produk yang kamu sewakan dengan jujur",
+                        hintText:
+                            "Deskripsikan produk yang kamu sewakan dengan jujur",
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.all(12),
                       ),
@@ -216,7 +268,10 @@ class _EditProductPageState extends State<EditProductPage> {
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
                       onPressed: _getCurrentLocation,
-                      icon: const Icon(Icons.location_on, color: Color(0xFF205781)),
+                      icon: const Icon(
+                        Icons.location_on,
+                        color: Color(0xFF205781),
+                      ),
                       label: const Text(
                         "Gunakan lokasi saat ini",
                         style: TextStyle(color: Color(0xFF205781)),
@@ -235,7 +290,10 @@ class _EditProductPageState extends State<EditProductPage> {
                       decoration: const InputDecoration(
                         hintText: "Kabupaten, Kecamatan, Nama Jalan",
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -253,7 +311,10 @@ class _EditProductPageState extends State<EditProductPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text("Simpan", style: TextStyle(fontSize: 16)),
+                        child: const Text(
+                          "Simpan",
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),

@@ -19,16 +19,10 @@ import '../../services/product_service.dart';
 class RentalHeaderControl extends StatelessWidget {
   final bool isSewakanActive;
 
-  const RentalHeaderControl({
-    super.key,
-    required this.isSewakanActive,
-  });
+  const RentalHeaderControl({super.key, required this.isSewakanActive});
 
   void _navigateToPage(BuildContext context, Widget targetPage) {
-    Navigator.pushReplacement(
-      context,
-      NoAnimationPageRoute(page: targetPage),
-    );
+    Navigator.pushReplacement(context, NoAnimationPageRoute(page: targetPage));
   }
 
   @override
@@ -74,7 +68,7 @@ class RentalHeaderControl extends StatelessWidget {
                       color: isSewakanActive ? Colors.transparent : activeColor,
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -101,7 +95,7 @@ class RentalHeaderControl extends StatelessWidget {
                       color: isSewakanActive ? activeColor : Colors.transparent,
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -112,7 +106,6 @@ class RentalHeaderControl extends StatelessWidget {
 }
 
 // --- END WIDGET KONTROL NAVIGASI BERSAMA ---
-
 
 // Halaman SewakanPage
 class SewakanPage extends StatefulWidget {
@@ -162,10 +155,7 @@ class _SewakanPageState extends State<SewakanPage> {
         page = const SewakanPage();
     }
 
-    Navigator.pushReplacement(
-      context,
-      NoAnimationPageRoute(page: page),
-    );
+    Navigator.pushReplacement(context, NoAnimationPageRoute(page: page));
   }
 
   void _navigateToCreateProductPage(BuildContext context) async {
@@ -177,13 +167,17 @@ class _SewakanPageState extends State<SewakanPage> {
   }
 
   // === CARD PRODUK SEWAKAN (Grid Style + Menu Edit/Hapus) ===
-  Widget _buildRentedProductCard(BuildContext context, DocumentSnapshot productDoc) {
+  Widget _buildRentedProductCard(
+    BuildContext context,
+    DocumentSnapshot productDoc,
+  ) {
     final item = productDoc.data() as Map<String, dynamic>?;
 
     if (item == null) return const SizedBox.shrink();
 
     // Mapping data Firestore ke variabel lokal
-    final bool isRented = item["isAvailable"] == false; // PENTING: Penentu status
+    final bool isRented =
+        item["isAvailable"] == false; // PENTING: Penentu status
     final String name = item["name"] ?? 'N/A';
     final String price = item["price"] ?? 'N/A';
     final String rawPrice = (item["raw_price"] ?? 0).toString();
@@ -191,7 +185,9 @@ class _SewakanPageState extends State<SewakanPage> {
     final String imageUrl = item["imageUrl"] ?? 'assets/placeholder.png';
     final int likesCount = item["likesCount"] ?? 0;
 
-    final double averageRating = (item['averageRating'] is num) ? (item['averageRating'] as num).toDouble() : 0.0;
+    final double averageRating = (item['averageRating'] is num)
+        ? (item['averageRating'] as num).toDouble()
+        : 0.0;
     final int rentedCount = item['rentedCount'] ?? 0;
     final String ratingDisplay = averageRating.toStringAsFixed(1);
 
@@ -206,29 +202,28 @@ class _SewakanPageState extends State<SewakanPage> {
       "imageUrl": imageUrl,
     };
 
-    final productDataForDetail = {
-      ...item,
-      "id": productDoc.id,
-    };
+    final productDataForDetail = {...item, "id": productDoc.id};
 
     return Stack(
       children: [
         GestureDetector(
           // 💡 PERBAIKAN 1: Menonaktifkan klik jika sedang disewa
-          onTap: isRented ? null : () async {
-            // Navigasi ke DetailPage (Hanya jika tidak disewa)
-            await Navigator.push(
-              context,
-              NoAnimationPageRoute(
-                page: DetailPage(
-                  product: productDataForDetail,
-                  isOwnerView: true,
-                  likedProducts: _likedProducts,
-                ),
-              ),
-            );
-            _loadLikedProducts();
-          },
+          onTap: isRented
+              ? null
+              : () async {
+                  // Navigasi ke DetailPage (Hanya jika tidak disewa)
+                  await Navigator.push(
+                    context,
+                    NoAnimationPageRoute(
+                      page: DetailPage(
+                        product: productDataForDetail,
+                        isOwnerView: true,
+                        likedProducts: _likedProducts,
+                      ),
+                    ),
+                  );
+                  _loadLikedProducts();
+                },
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -253,9 +248,25 @@ class _SewakanPageState extends State<SewakanPage> {
                     width: double.infinity,
                     color: Colors.grey[200],
                     child: imageUrl.startsWith('http')
-                        ? Image.network(imageUrl, fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.image_not_supported, size: 40, color: Colors.black38)))
-                        : const Center(child: Icon(Icons.image, size: 50, color: Colors.black38)),
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Center(
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    size: 40,
+                                    color: Colors.black38,
+                                  ),
+                                ),
+                          )
+                        : const Center(
+                            child: Icon(
+                              Icons.image,
+                              size: 50,
+                              color: Colors.black38,
+                            ),
+                          ),
                   ),
                 ),
 
@@ -274,23 +285,33 @@ class _SewakanPageState extends State<SewakanPage> {
                       ),
                       Text(
                         price,
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
                       ),
 
                       const SizedBox(height: 2),
 
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                          const Icon(
+                            Icons.location_on,
+                            size: 12,
+                            color: Colors.grey,
+                          ),
                           const SizedBox(width: 2),
                           Expanded(
                             child: Text(
                               location,
-                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                          )
+                          ),
                         ],
                       ),
 
@@ -299,17 +320,26 @@ class _SewakanPageState extends State<SewakanPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("⭐ $ratingDisplay | $rentedCount tersewa",
-                              style: const TextStyle(fontSize: 11)),
+                          Text(
+                            "⭐ $ratingDisplay | $rentedCount tersewa",
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           Row(
                             children: [
-                              const Icon(Icons.favorite, color: Colors.red, size: 16),
+                              const Icon(
+                                Icons.favorite,
+                                color: Colors.red,
+                                size: 16,
+                              ),
                               const SizedBox(width: 2),
-                              Text("$likesCount", style: const TextStyle(fontSize: 12)),
+                              Text(
+                                "$likesCount",
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             ],
-                          )
+                          ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -325,63 +355,92 @@ class _SewakanPageState extends State<SewakanPage> {
           child: Container(
             decoration: BoxDecoration(
               // 💡 Perubahan warna background tombol jika sedang disewa
-                color: isRented ? Colors.transparent : Colors.black.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20)
+              color: isRented
+                  ? Colors.transparent
+                  : Colors.black.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
             ),
             // 💡 PERBAIKAN 2: Nonaktifkan PopupMenuButton jika sedang disewa
             child: isRented
                 ? const SizedBox.shrink() // Sembunyikan tombol jika disewa
                 : PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.white),
-              padding: EdgeInsets.zero,
-              onSelected: (String result) async {
-                if (result == 'edit') {
-                  // Navigasi ke Edit Produk
-                  await Navigator.push(
-                    context,
-                    NoAnimationPageRoute(
-                      page: EditProductPage(product: productDataForEdit),
-                    ),
-                  );
-                } else if (result == 'delete') {
-                  // LOGIKA HAPUS DENGAN KONFIRMASI
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text("Hapus Produk"),
-                      content: Text("Anda yakin ingin menghapus produk '$name'? Tindakan ini tidak dapat dibatalkan."),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Batal")),
-                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Hapus", style: TextStyle(color: Colors.red))),
-                      ],
-                    ),
-                  );
+                    icon: const Icon(Icons.more_vert, color: Colors.white),
+                    padding: EdgeInsets.zero,
+                    onSelected: (String result) async {
+                      if (result == 'edit') {
+                        final updatedProduct = await Navigator.push(
+                          context,
+                          NoAnimationPageRoute(
+                            page: EditProductPage(product: productDataForEdit),
+                          ),
+                        );
 
-                  if (confirm == true) {
-                    final error = await _productService.deleteProduct(productDoc.id);
-                    if (error == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Produk $name berhasil dihapus.')),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Gagal menghapus: $error')),
-                      );
-                    }
-                  }
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                  value: 'edit',
-                  child: Text('Edit Produk'),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Text('Hapus', style: TextStyle(color: Colors.red)),
-                ),
-              ],
-            ),
+                        // Jika ada perubahan → refresh UI
+                        if (updatedProduct != null) {
+                          setState(
+                            () {},
+                          ); // memaksa rebuild agar data baru muncul
+                        }
+                      } else if (result == 'delete') {
+                        // LOGIKA HAPUS DENGAN KONFIRMASI
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text("Hapus Produk"),
+                            content: Text(
+                              "Anda yakin ingin menghapus produk '$name'? Tindakan ini tidak dapat dibatalkan.",
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Batal"),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text(
+                                  "Hapus",
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true) {
+                          final error = await _productService.deleteProduct(
+                            productDoc.id,
+                          );
+                          if (error == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Produk $name berhasil dihapus.'),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Gagal menghapus: $error'),
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Text('Edit Produk'),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Text(
+                              'Hapus',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                  ),
           ),
         ),
 
@@ -414,9 +473,11 @@ class _SewakanPageState extends State<SewakanPage> {
     if (_productService.currentUserId == null) {
       return Scaffold(
         body: const Center(
-          child: Text("Anda harus login untuk melihat produk yang Anda sewakan."),
+          child: Text(
+            "Anda harus login untuk melihat produk yang Anda sewakan.",
+          ),
         ),
-        bottomNavigationBar: BottomNavBar(currentIndex: 1, onTap: (_){}),
+        bottomNavigationBar: BottomNavBar(currentIndex: 1, onTap: (_) {}),
       );
     }
 
@@ -433,10 +494,7 @@ class _SewakanPageState extends State<SewakanPage> {
               alignment: Alignment.centerLeft,
               child: Text(
                 "Produk yang kamu sewakan",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ),
           ),
@@ -450,17 +508,26 @@ class _SewakanPageState extends State<SewakanPage> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(child: Text('Terjadi kesalahan saat memuat produk: ${snapshot.error}. Pastikan Anda sudah membuat Composite Index yang diminta di Firebase Console.'));
+                  return Center(
+                    child: Text(
+                      'Terjadi kesalahan saat memuat produk: ${snapshot.error}. Pastikan Anda sudah membuat Composite Index yang diminta di Firebase Console.',
+                    ),
+                  );
                 }
 
-                final List<DocumentSnapshot> products = snapshot.data?.docs ?? [];
+                final List<DocumentSnapshot> products =
+                    snapshot.data?.docs ?? [];
 
                 if (products.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.inventory_2_outlined, size: 50, color: Colors.grey),
+                        const Icon(
+                          Icons.inventory_2_outlined,
+                          size: 50,
+                          color: Colors.grey,
+                        ),
                         const SizedBox(height: 10),
                         const Text(
                           "Belum ada produk yang disewakan.",
@@ -475,12 +542,13 @@ class _SewakanPageState extends State<SewakanPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: GridView.builder(
                     itemCount: products.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.65,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.65,
+                        ),
                     itemBuilder: (context, index) {
                       return _buildRentedProductCard(context, products[index]);
                     },
