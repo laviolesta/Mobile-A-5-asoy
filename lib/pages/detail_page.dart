@@ -31,8 +31,10 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   final ProductService _productService = ProductService();
-  final UserService _userService = UserService(); // ⬅️ INISIALISASI USER SERVICE
-  final FirebaseAuth _auth = FirebaseAuth.instance; // ⬅️ INISIALISASI FIREBASE AUTH
+  final UserService _userService =
+      UserService(); // ⬅️ INISIALISASI USER SERVICE
+  final FirebaseAuth _auth =
+      FirebaseAuth.instance; // ⬅️ INISIALISASI FIREBASE AUTH
 
   late bool isLiked;
   late int currentLikesCount;
@@ -40,7 +42,8 @@ class _DetailPageState extends State<DetailPage> {
   // Stream untuk ulasan (reviews)
   late Stream<QuerySnapshot> _reviewsStream;
 
-  String get ownerName => widget.product["ownerName"] ?? "Pemilik Tidak Dikenal";
+  String ownerName = "Memuat...";
+
   String get ownerProfileUrl => widget.product["ownerProfileUrl"] ?? "";
 
   @override
@@ -56,6 +59,25 @@ class _DetailPageState extends State<DetailPage> {
     } else {
       _reviewsStream = Stream.empty();
     }
+
+    final ownerId = widget.product["ownerId"];
+    if (ownerId != null) {
+      FirebaseFirestore.instance.collection("users").doc(ownerId).get().then((
+        doc,
+      ) {
+        if (doc.exists) {
+          setState(() {
+            ownerName = doc.data()?["username"] ?? "Pemilik";
+          });
+        } else {
+          setState(() {
+            ownerName = "Pemilik";
+          });
+        }
+      });
+    } else {
+      ownerName = "Pemilik";
+    }
   }
 
   Future<void> _toggleLike() async {
@@ -67,11 +89,12 @@ class _DetailPageState extends State<DetailPage> {
     // ⚠️ Guardrail: Cek apakah user sudah login
     if (currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Anda harus login untuk menyukai produk.')),
+        const SnackBar(
+          content: Text('Anda harus login untuk menyukai produk.'),
+        ),
       );
       return;
     }
-
 
     final bool wasLiked = isLiked;
 
@@ -82,14 +105,17 @@ class _DetailPageState extends State<DetailPage> {
     });
 
     // 1. Update jumlah likes di dokumen produk
-    final productSuccess = await _productService.toggleProductLike(productId, isLiked);
+    final productSuccess = await _productService.toggleProductLike(
+      productId,
+      isLiked,
+    );
 
     // 2. Update daftar liked_products di dokumen pengguna
     final userSuccess = await _userService.toggleLike(currentUserId, productId);
 
-
     // Cek keberhasilan kedua operasi
-    if (productSuccess && userSuccess == null) { // userSuccess null = berhasil
+    if (productSuccess && userSuccess == null) {
+      // userSuccess null = berhasil
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(isLiked ? 'Produk disukai' : 'Suka dibatalkan')),
       );
@@ -101,7 +127,9 @@ class _DetailPageState extends State<DetailPage> {
           currentLikesCount += isLiked ? 1 : -1;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal memperbarui status suka (Firestore Error)')),
+          const SnackBar(
+            content: Text('Gagal memperbarui status suka (Firestore Error)'),
+          ),
         );
       }
     }
@@ -114,9 +142,9 @@ class _DetailPageState extends State<DetailPage> {
     if (await canLaunchUrl(whatsapp)) {
       await launchUrl(whatsapp, mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal membuka WhatsApp')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Gagal membuka WhatsApp')));
     }
   }
 
@@ -150,23 +178,27 @@ class _DetailPageState extends State<DetailPage> {
       if (productId == null || ownerId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Error: Data produk atau pemilik tidak lengkap.")),
+            const SnackBar(
+              content: Text("Error: Data produk atau pemilik tidak lengkap."),
+            ),
           );
         }
         return;
       }
 
-      final productRef = FirebaseFirestore.instance.collection('products').doc(productId);
-
+      final productRef = FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId);
 
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text("Konfirmasi Penyewaan"),
           content: Text(
-              "Anda menyewa produk dari ${start.day}/${start.month}/${start.year} "
-                  "sampai ${end.day}/${end.month}/${end.year} "
-                  "(${duration} hari)"),
+            "Anda menyewa produk dari ${start.day}/${start.month}/${start.year} "
+            "sampai ${end.day}/${end.month}/${end.year} "
+            "(${duration} hari)",
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -188,20 +220,22 @@ class _DetailPageState extends State<DetailPage> {
                   if (result == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text("Penyewaan berhasil diajukan! Menunggu konfirmasi.")),
+                        content: Text(
+                          "Penyewaan berhasil diajukan! Menunggu konfirmasi.",
+                        ),
+                      ),
                     );
 
                     Navigator.pushAndRemoveUntil(
                       context,
                       NoAnimationPageRoute(page: const SewaPage()),
-                          (route) => false,
+                      (route) => false,
                     );
-
-
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                          content: Text("Gagal mengajukan penyewaan: $result")),
+                        content: Text("Gagal mengajukan penyewaan: $result"),
+                      ),
                     );
                   }
                 }
@@ -217,7 +251,9 @@ class _DetailPageState extends State<DetailPage> {
   @override
   Widget build(BuildContext context) {
     // Ambil data rating dan format
-    final double averageRating = (widget.product['averageRating'] is num) ? (widget.product['averageRating'] as num).toDouble() : 0.0;
+    final double averageRating = (widget.product['averageRating'] is num)
+        ? (widget.product['averageRating'] as num).toDouble()
+        : 0.0;
     final String ratingDisplay = averageRating.toStringAsFixed(1);
 
     // Tentukan warna ikon like kondisional
@@ -260,12 +296,18 @@ class _DetailPageState extends State<DetailPage> {
                   /// IMAGE
                   Center(
                     child: Image.network(
-                      widget.product["imageUrl"] ?? "https://via.placeholder.com/260",
+                      widget.product["imageUrl"] ??
+                          "https://via.placeholder.com/260",
                       height: 260,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Center(
-                        child: Icon(Icons.image_not_supported, size: 80, color: Colors.black38),
-                      ),
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Center(
+                            child: Icon(
+                              Icons.image_not_supported,
+                              size: 80,
+                              color: Colors.black38,
+                            ),
+                          ),
                     ),
                   ),
 
@@ -286,8 +328,10 @@ class _DetailPageState extends State<DetailPage> {
 
                   /// PRICE + TERSEWA + LOVE
                   Padding(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -299,8 +343,8 @@ class _DetailPageState extends State<DetailPage> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                                "${widget.product["rentedCount"] ?? 0} tersewa",
-                                style: const TextStyle(fontSize: 12)
+                              "${widget.product["rentedCount"] ?? 0} tersewa",
+                              style: const TextStyle(fontSize: 12),
                             ),
                             const SizedBox(height: 4),
                             // Love count hanya muncul jika BUKAN Owner View
@@ -308,15 +352,18 @@ class _DetailPageState extends State<DetailPage> {
                               Row(
                                 children: [
                                   const Icon(
-                                      Icons.favorite,
-                                      color: Colors.red,
-                                      size: 18),
+                                    Icons.favorite,
+                                    color: Colors.red,
+                                    size: 18,
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text("$currentLikesCount"), // Menggunakan currentLikesCount
+                                  Text(
+                                    "$currentLikesCount",
+                                  ), // Menggunakan currentLikesCount
                                 ],
-                              )
+                              ),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -344,7 +391,10 @@ class _DetailPageState extends State<DetailPage> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     child: Text(
                       widget.product["description"] ?? "Tidak ada deskripsi.",
                     ),
@@ -361,7 +411,10 @@ class _DetailPageState extends State<DetailPage> {
                         const SizedBox(width: 4),
                         Text("$ratingDisplay Rating Produk"),
                         // Tambahkan jumlah ulasan (optional)
-                        Text(" (${widget.product["reviewCount"] ?? 0} Ulasan)", style: const TextStyle(color: Colors.grey)),
+                        Text(
+                          " (${widget.product["reviewCount"] ?? 0} Ulasan)",
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
@@ -391,15 +444,19 @@ class _DetailPageState extends State<DetailPage> {
                             backgroundImage: ownerProfileUrl.isNotEmpty
                                 ? NetworkImage(ownerProfileUrl) as ImageProvider
                                 : null,
-                            child: ownerProfileUrl.isEmpty ? const Icon(Icons.person) : null,
+                            child: ownerProfileUrl.isEmpty
+                                ? const Icon(Icons.person)
+                                : null,
                           ),
                           title: Text(ownerName),
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const OwnerProfilePage(),
-                                // TODO: Kirim ID Pemilik ke OwnerProfilePage
+                                builder: (context) => OwnerProfilePage(
+                                  ownerId: widget
+                                      .product["ownerId"], // atau product.ownerId
+                                ),
                               ),
                             );
                           },
@@ -409,8 +466,7 @@ class _DetailPageState extends State<DetailPage> {
                     ),
 
                   // Jarak tambahan jika Owner View, karena BottomBar akan hilang
-                  if (widget.isOwnerView)
-                    const SizedBox(height: 20),
+                  if (widget.isOwnerView) const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -422,49 +478,51 @@ class _DetailPageState extends State<DetailPage> {
       bottomNavigationBar: widget.isOwnerView
           ? null
           : Container(
-        padding: const EdgeInsets.all(12),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.black12)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _openWhatsApp,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: Colors.black12)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _openWhatsApp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const FaIcon(
+                        FontAwesomeIcons.whatsapp,
+                        color: Colors.white,
+                      ),
+                      label: const Text(
+                        "Chat Pemilik",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
                   ),
-                ),
-                icon: const FaIcon(
-                  FontAwesomeIcons.whatsapp,
-                  color: Colors.white,
-                ),
-                label: const Text(
-                  "Chat Pemilik",
-                  style: TextStyle(color: Colors.white),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _showRentDialog,
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(
+                          0xFF205781,
+                        ), // Warna Primer
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text("Ajukan Sewa"),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _showRentDialog,
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: const Color(0xFF205781), // Warna Primer
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text("Ajukan Sewa"),
-              ),
-            )
-          ],
-        ),
-      ),
     );
   }
 
@@ -489,7 +547,10 @@ class _DetailPageState extends State<DetailPage> {
         if (reviews.isEmpty) {
           return const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text("Belum ada ulasan untuk produk ini.", style: TextStyle(color: Colors.grey)),
+            child: Text(
+              "Belum ada ulasan untuk produk ini.",
+              style: TextStyle(color: Colors.grey),
+            ),
           );
         }
 
@@ -500,7 +561,8 @@ class _DetailPageState extends State<DetailPage> {
             final reviewerName = reviewData['userName'] ?? 'Pengguna Anonim';
             final comment = reviewData['comment'] ?? 'Tidak ada ulasan.';
             final rating = reviewData['rating'] as num? ?? 0;
-            final userProfileUrl = reviewData['userProfileUrl'] as String? ?? '';
+            final userProfileUrl =
+                reviewData['userProfileUrl'] as String? ?? '';
 
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -517,7 +579,9 @@ class _DetailPageState extends State<DetailPage> {
                     backgroundImage: userProfileUrl.isNotEmpty
                         ? NetworkImage(userProfileUrl) as ImageProvider
                         : null,
-                    child: userProfileUrl.isEmpty ? const Icon(Icons.person) : null,
+                    child: userProfileUrl.isEmpty
+                        ? const Icon(Icons.person)
+                        : null,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -527,22 +591,31 @@ class _DetailPageState extends State<DetailPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(reviewerName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text(
+                              reviewerName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             Row(
                               children: [
-                                const Icon(Icons.star, color: Colors.orange, size: 14),
-                                Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12)),
+                                const Icon(
+                                  Icons.star,
+                                  color: Colors.orange,
+                                  size: 14,
+                                ),
+                                Text(
+                                  rating.toStringAsFixed(1),
+                                  style: const TextStyle(fontSize: 12),
+                                ),
                               ],
-                            )
+                            ),
                           ],
                         ),
-                        Text(
-                          comment,
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                        Text(comment, style: const TextStyle(fontSize: 12)),
                       ],
                     ),
-                  )
+                  ),
                 ],
               ),
             );

@@ -19,17 +19,22 @@ class ProductService {
   // KONSTANTA CLOUDINARY
   // ⚠️ PASTIKAN NILAI INI SESUAI DENGAN AKUN ANDA!
   // ===================================
-  static const String CLOUDINARY_CLOUD_NAME = 'diksekwav'; // Ganti dengan cloud name Anda
-  static const String CLOUDINARY_UPLOAD_PRESET = 'my_product_preset'; // Ganti dengan upload preset Anda
+  static const String CLOUDINARY_CLOUD_NAME =
+      'diksekwav'; // Ganti dengan cloud name Anda
+  static const String CLOUDINARY_UPLOAD_PRESET =
+      'my_product_preset'; // Ganti dengan upload preset Anda
 
-  final String _uploadUrl = 'https://api.cloudinary.com/v1_1/$CLOUDINARY_CLOUD_NAME/image/upload';
-
+  final String _uploadUrl =
+      'https://api.cloudinary.com/v1_1/$CLOUDINARY_CLOUD_NAME/image/upload';
 
   // ===================================
   // FUNGSI BANTUAN CLOUDINARY
   // ===================================
 
-  Future<String?> uploadProductImage(UniversalImageFile imageFile, String productId) async {
+  Future<String?> uploadProductImage(
+    UniversalImageFile imageFile,
+    String productId,
+  ) async {
     try {
       final bytes = kIsWeb
           ? await (imageFile as XFile).readAsBytes()
@@ -40,11 +45,13 @@ class ProductService {
       request.fields['upload_preset'] = CLOUDINARY_UPLOAD_PRESET;
       request.fields['public_id'] = 'produk_$productId';
 
-      request.files.add(http.MultipartFile.fromBytes(
-        'file',
-        bytes,
-        filename: 'product_image_${productId}.jpg',
-      ));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: 'product_image_${productId}.jpg',
+        ),
+      );
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -53,16 +60,16 @@ class ProductService {
         final Map<String, dynamic> responseData = json.decode(response.body);
         return responseData['secure_url'] as String;
       } else {
-        debugPrint("Gagal mengunggah ke Cloudinary. Status: ${response.statusCode}, Body: ${response.body}");
+        debugPrint(
+          "Gagal mengunggah ke Cloudinary. Status: ${response.statusCode}, Body: ${response.body}",
+        );
         return null;
       }
-
     } catch (e) {
       debugPrint("Gagal mengunggah gambar ke Cloudinary: $e");
       return null;
     }
   }
-
 
   // ===================================
   // I. OPERASI PRODUK (Koleksi 'products')
@@ -78,7 +85,8 @@ class ProductService {
     required String address,
     required UniversalImageFile? imageFile,
   }) async {
-    if (currentUserId == null) return "Pengguna belum login. Silakan coba lagi.";
+    if (currentUserId == null)
+      return "Pengguna belum login. Silakan coba lagi.";
     if (imageFile == null) return "File gambar tidak boleh kosong.";
 
     try {
@@ -144,7 +152,8 @@ class ProductService {
 
   // Query untuk HomePage (Semua produk, filter dilakukan di sisi klien)
   Stream<QuerySnapshot> getAllProductsForHomePage() {
-    return _firestore.collection('products')
+    return _firestore
+        .collection('products')
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
@@ -153,11 +162,28 @@ class ProductService {
   Stream<QuerySnapshot> getOwnerProducts() {
     if (currentUserId == null) return Stream.empty();
 
-    return _firestore.collection('products')
+    return _firestore
+        .collection('products')
         .where('ownerId', isEqualTo: currentUserId)
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
+
+  Stream<List<Map<String, dynamic>>> streamProductsByOwner(String ownerId) {
+  return _firestore
+      .collection('products')
+      .where('ownerId', isEqualTo: ownerId)
+      .orderBy('createdAt', descending: true)
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          data['id'] = doc.id; // opsional, kalau kamu butuh id
+          return data;
+        }).toList();
+      });
+}
+
 
   // Metode untuk mendapatkan Stream Ulasan (Reviews)
   Stream<QuerySnapshot> getProductReviews(String productId) {
@@ -168,7 +194,6 @@ class ProductService {
         .snapshots();
   }
 
-
   // ===================================
   // II. OPERASI PENYEWAAN DAN LAINNYA ('rentals' collection)
   // ===================================
@@ -177,7 +202,8 @@ class ProductService {
   Stream<QuerySnapshot> getCurrentRentals() {
     if (currentUserId == null) return Stream.empty();
 
-    return _firestore.collection('rentals')
+    return _firestore
+        .collection('rentals')
         .where('renterId', isEqualTo: currentUserId)
         .where('status', isEqualTo: 'Disewa')
         .orderBy('createdAt', descending: true)
@@ -188,7 +214,8 @@ class ProductService {
   Stream<QuerySnapshot> getRentalHistory() {
     if (currentUserId == null) return Stream.empty();
 
-    return _firestore.collection('rentals')
+    return _firestore
+        .collection('rentals')
         .where('renterId', isEqualTo: currentUserId)
         .where('status', isEqualTo: 'Selesai')
         .orderBy('endDate', descending: true)
@@ -244,7 +271,9 @@ class ProductService {
       // 1. PERBAIKAN KRUSIAL: Update status produk di koleksi 'products'
       await productRef.update({
         'isAvailable': false,
-        'rentalEndDate': Timestamp.fromDate(endDate), // <-- PENTING! Update tanggal berakhir sewa
+        'rentalEndDate': Timestamp.fromDate(
+          endDate,
+        ), // <-- PENTING! Update tanggal berakhir sewa
       });
 
       // 2. Buat dokumen rental baru di koleksi 'rentals'
@@ -315,8 +344,10 @@ class ProductService {
   }
   // =========================================================
 
-
-  Future<bool> toggleProductLike(String productId, bool targetLikedStatus) async {
+  Future<bool> toggleProductLike(
+    String productId,
+    bool targetLikedStatus,
+  ) async {
     final uid = currentUserId;
     if (uid == null) return false;
 
@@ -328,12 +359,20 @@ class ProductService {
 
       if (targetLikedStatus) {
         // Jika target status adalah LIKED (TRUE): Lakukan LIKE (+1)
-        batch.update(userRef, {'liked_products': FieldValue.arrayUnion([productId])});
-        batch.update(productRef, {'likesCount': FieldValue.increment(1)}); // Bertambah 1
+        batch.update(userRef, {
+          'liked_products': FieldValue.arrayUnion([productId]),
+        });
+        batch.update(productRef, {
+          'likesCount': FieldValue.increment(1),
+        }); // Bertambah 1
       } else {
         // Jika target status adalah UNLIKED (FALSE): Lakukan UNLIKE (-1)
-        batch.update(userRef, {'liked_products': FieldValue.arrayRemove([productId])});
-        batch.update(productRef, {'likesCount': FieldValue.increment(-1)}); // Berkurang 1
+        batch.update(userRef, {
+          'liked_products': FieldValue.arrayRemove([productId]),
+        });
+        batch.update(productRef, {
+          'likesCount': FieldValue.increment(-1),
+        }); // Berkurang 1
       }
 
       await batch.commit();
@@ -376,12 +415,17 @@ class ProductService {
     if (currentUserId == null) return [];
 
     try {
-      final userDoc = await _firestore.collection('users').doc(currentUserId).get();
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(currentUserId)
+          .get();
 
       if (userDoc.exists) {
         final data = userDoc.data();
         if (data != null && data.containsKey('liked_products')) {
-          return List<String>.from((data['liked_products'] as List<dynamic>?) ?? []);
+          return List<String>.from(
+            (data['liked_products'] as List<dynamic>?) ?? [],
+          );
         }
       }
       return [];
