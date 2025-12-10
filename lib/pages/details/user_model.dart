@@ -8,9 +8,8 @@ class UserModel {
   final String fakultas;
   final String jurusan;
   final String no_whatsapp;
-
-  final String? photoUrl; // URL Foto Profil dari Cloudinary
-  final List<String>? liked_products; // Daftar ID Produk yang Disukai
+  final String? photoUrl; // Untuk URL foto profil
+  final List<String>? liked_products; // Daftar ID produk yang disukai
 
   const UserModel({
     required this.id,

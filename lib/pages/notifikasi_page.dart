@@ -257,6 +257,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       // 1. HEADER DARI KODE LAMA
+      // 1. HEADER DARI KODE LAMA
       body: Column(
         children: [
           const HeaderWidget(title: "Notifikasi"),
@@ -265,6 +266,8 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
           ),
         ],
       ),
+      
+      // 2. BOTTOM NAV BAR DARI KODE LAMA
       
       // 2. BOTTOM NAV BAR DARI KODE LAMA
       bottomNavigationBar: BottomNavBar(

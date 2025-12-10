@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // Import ini untuk memformat tanggal
 import '../widgets/header_widget.dart';
 import '../widgets/bottom_navbar.dart';
 import '../utils/no_animation_route.dart';
-import '../pages/detail_page.dart'; // pastikan path sesuai
+import '../pages/detail_page.dart';
 import 'notifikasi_page.dart';
 import 'sewa/sewa_page.dart';
+import '../services/product_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,52 +17,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final ProductService _productService = ProductService();
+
+  late Stream<QuerySnapshot> _availableProductsStream;
+
   final TextEditingController searchController = TextEditingController();
   String selectedFilter = "Semua";
-
-  // Dummy data produk
-  final List<Map<String, dynamic>> products = [
-    {
-      "name": "Kalkulator Ilmiah",
-      "price": "Rp2.000/hari",
-      "category": "ATK",
-      "status": "tersedia",
-      "location": "Gowa, Jl. Mawar",
-      "rentalInfo": null,
-    },
-    {
-      "name": "Almamater Unhas",
-      "price": "Rp3.000/hari",
-      "category": "Pakaian",
-      "status": "tersedia",
-      "location": "Gowa, Jl. Kenanga",
-      "rentalInfo": null,
-    },
-    {
-      "name": "Baju Putih",
-      "price": "Rp3.000/hari",
-      "category": "Pakaian",
-      "status": "tersedia",
-      "location": "Gowa, Jl. Flamboyan",
-      "rentalInfo": null,
-    },
-    {
-      "name": "Kompor Portable",
-      "price": "Rp3.000/hari",
-      "category": "Elektronik",
-      "status": "tersedia",
-      "location": "Tamalanrea",
-      "rentalInfo": null,
-    },
-    {
-      "name": "Jas Hitam",
-      "price": "Rp4.000/hari",
-      "category": "Pakaian",
-      "status": "tersedia",
-      "location": "Gowa, Jl. Kelapa",
-      "rentalInfo": null,
-    },
-  ];
 
   final List<String> filterOptions = [
     "Semua",
@@ -70,26 +33,66 @@ class _HomePageState extends State<HomePage> {
     "Elektronik",
   ];
 
-  // === FILTER + SEARCH RESULT ===
-  List<Map<String, dynamic>> get filteredProducts {
-    return products.where((product) {
-      final searchMatch = product["name"]
-          .toLowerCase()
-          .contains(searchController.text.toLowerCase());
+  List<String> _likedProducts = [];
 
-      bool filterMatch = true;
+  @override
+  void initState() {
+    super.initState();
+    // Catatan: Asumsi getAvailableProducts() sudah diubah di ProductService
+    // untuk mengambil semua produk yang TIDAK dimiliki pengguna (agar filter Disewa berfungsi).
+    _availableProductsStream = _productService.getAllProductsForHomePage(); // Diganti agar semua produk masuk
+    _loadLikedProducts();
+  }
 
-      if (selectedFilter == "Tersedia") {
-        filterMatch = product["status"] == "tersedia";
-      } else if (selectedFilter == "Disewa") {
-        filterMatch = product["status"] == "disewa";
-      } else if (selectedFilter != "Semua") {
-        filterMatch = product["category"] == selectedFilter;
+  void _loadLikedProducts() async {
+    final List<String> likedIds = await _productService.getLikedProductIds();
+
+    if (mounted) {
+      setState(() {
+        _likedProducts = likedIds;
+      });
+    }
+  }
+
+  List<DocumentSnapshot> _applyFilterAndSearch(List<DocumentSnapshot> allProducts) {
+    final searchQuery = searchController.text.toLowerCase().trim();
+    final currentUserId = _productService.currentUserId;
+
+
+    return allProducts.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = data["name"]?.toLowerCase() ?? '';
+      final category = data["category"] ?? '';
+      final ownerId = data["ownerId"] as String?; // Dapatkan ID pemilik
+
+      // ===========================================
+      // 1. LOGIKA PENGECUALIAN PRODUK MILIK SENDIRI
+      // ===========================================
+      // Jika pengguna login dan ID pemilik sama dengan ID pengguna, sembunyikan produk ini.
+      if (currentUserId != null && ownerId == currentUserId) {
+        return false;
       }
 
+      final isAvailable = data["isAvailable"] ?? true;
+
+      // 2. Search Match
+      final searchMatch = name.contains(searchQuery);
+
+      // 3. Filter Match
+      bool filterMatch = true;
+      if (selectedFilter == "Tersedia") {
+        filterMatch = isAvailable == true;
+      } else if (selectedFilter == "Disewa") {
+        filterMatch = isAvailable == false;
+      } else if (selectedFilter != "Semua") {
+        filterMatch = category == selectedFilter;
+      }
+
+      // Gabungkan Search Match dan Filter Match
       return searchMatch && filterMatch;
     }).toList();
   }
+
 
   String get pageTitle {
     switch (selectedFilter) {
@@ -125,7 +128,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // === FILTER BOTTOM SHEET ===
   void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
@@ -150,12 +152,26 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    const double gridSpacing = 12.0;
+
+    int crossAxisCount = 2;
+    if (screenWidth >= 900) {
+      crossAxisCount = 4;
+    } else if (screenWidth >= 700) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 2;
+    }
+
+    // Menggunakan rasio tetap dari SewakanPage
+    const double childAspectRatio = 0.65;
+
     return Scaffold(
       body: Column(
         children: [
           const HeaderWidget(title: "Beranda"),
 
-          // === Search + Filter ===
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -203,7 +219,6 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 16),
 
-          // === Judul ===
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Align(
@@ -217,23 +232,49 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 10),
 
-          // === Grid Produk ===
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GridView.builder(
-                itemCount: filteredProducts.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.68,
-                ),
-                itemBuilder: (context, index) {
-                  final item = filteredProducts[index];
-                  return _buildProductCard(context, item);
-                },
-              ),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _availableProductsStream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(child: Text('Terjadi kesalahan saat memuat produk: ${snapshot.error}'));
+                }
+
+                final List<DocumentSnapshot> rawProducts = snapshot.data?.docs ?? [];
+                // Lakukan filter pengecualian pemilik di sini
+                final List<DocumentSnapshot> finalProducts = _applyFilterAndSearch(rawProducts);
+
+                if (finalProducts.isEmpty) {
+                  return const Center(
+                    child: Text("Tidak ada produk lain yang tersedia dengan kriteria ini."),
+                  );
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GridView.builder(
+                    itemCount: finalProducts.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: gridSpacing,
+                      crossAxisSpacing: gridSpacing,
+                      childAspectRatio: childAspectRatio, // Menggunakan rasio tetap (0.65)
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = finalProducts[index].data() as Map<String, dynamic>?;
+                      final productData = item?..['id'] = finalProducts[index].id;
+
+                      if (productData == null) return const SizedBox.shrink();
+
+                      return _buildProductCard(context, productData);
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -246,116 +287,179 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // === CARD PRODUK + NAVIGASI KE DETAIL ===
   Widget _buildProductCard(BuildContext context, Map<String, dynamic> item) {
-    final bool isRented = item["status"] == "disewa";
+
+    final productId = item['id'] as String;
+    // Fallback data yang aman
+    final name = item['name'] ?? 'Nama Produk';
+    final price = item['price'] ?? 'N/A';
+    final location = item['location'] ?? 'Lokasi';
+    final imageUrl = item['imageUrl'] ?? ''; // Diubah ke string kosong, bukan 'assets/placeholder.png'
+    final likesCount = item['likesCount'] ?? 0;
+    final isAvailable = item['isAvailable'] ?? true;
+
+    // Ambil tanggal berakhir sewa (Asumsi nama field: rentalEndDate dan bertipe Timestamp)
+    final Timestamp? rentalEndDateTimestamp = item['rentalEndDate'] as Timestamp?;
+    final String rentalEndDate = rentalEndDateTimestamp != null
+        ? DateFormat('dd MMM').format(rentalEndDateTimestamp.toDate())
+        : 'Tidak diketahui';
+
+    final double averageRating = (item['averageRating'] is num) ? (item['averageRating'] as num).toDouble() : 0.0;
+    final int rentedCount = item['rentedCount'] ?? 0;
+
+    final String ratingDisplay = averageRating.toStringAsFixed(1);
+
+    final bool isProductLiked = _likedProducts.contains(productId);
+    final bool isRented = !isAvailable;
+
+    const double imageHeight = 150;
 
     return GestureDetector(
-      onTap: () async {
-        // Navigasi ke DetailPage
+      // 💡 PERBAIKAN: Hanya aktifkan onTap jika produk tersedia (!isRented)
+      onTap: isRented ? null : () async {
         await Navigator.push(
           context,
           NoAnimationPageRoute(
-            page: DetailPage(product: item),
+            page: DetailPage(
+              product: item,
+              isOwnerView: false,
+              likedProducts: _likedProducts,
+            ),
           ),
         );
-
-        // Setelah kembali dari DetailPage, refresh state untuk overlay terbaru
-        setState(() {});
+        _loadLikedProducts();
       },
       child: Stack(
         children: [
+          // KONTEN KARTU PRODUK
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Gambar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    height: 110,
+                    height: imageHeight,
                     width: double.infinity,
                     color: Colors.grey[200],
-                    child: const Icon(Icons.image, size: 50),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.image_not_supported, size: 40, color: Colors.black38)),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                      },
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 8),
 
-                Text(
-                  item["name"],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      Text(
+                        price,
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              location,
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )
+                        ],
+                      ),
+
+                      const Spacer(),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                              "⭐ $ratingDisplay | $rentedCount tersewa",
+                              style: const TextStyle(fontSize: 11)
+                          ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.favorite,
+                                color: Colors.red,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text("$likesCount", style: const TextStyle(fontSize: 12)),
+                            ],
+                          )
+                        ],
+                      )
+                    ],
+                  ),
                 ),
-
-                Text(
-                  item["price"],
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-
-                const SizedBox(height: 2),
-
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 12, color: Colors.grey),
-                    const SizedBox(width: 2),
-                    Text(
-                      item["location"],
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    )
-                  ],
-                ),
-
-                const Spacer(),
-
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("⭐ 4.9 | 21 tersewa", style: TextStyle(fontSize: 11)),
-                    Row(
-                      children: [
-                        Icon(Icons.favorite, color: Colors.red, size: 16),
-                        SizedBox(width: 2),
-                        Text("20", style: TextStyle(fontSize: 12)),
-                      ],
-                    )
-                  ],
-                )
               ],
             ),
           ),
 
+          // 💡 PERBAIKAN: OVERLAY STATUS DISEWA
           if (isRented)
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "DISEWAKAN",
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  // Menggunakan opacity yang konsisten
+                  color: Colors.black.withOpacity(0.65),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "DISEWA", // Teks utama
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item["rentalInfo"] != null
-                          ? "${item["rentalInfo"].start.day}/${item["rentalInfo"].start.month} - ${item["rentalInfo"].end.day}/${item["rentalInfo"].end.month}"
-                          : "Sedang disewa",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        // 💡 Tampilkan detail tanggal berakhir
+                        "Tersedia kembali pada\n$rentalEndDate",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

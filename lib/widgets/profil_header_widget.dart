@@ -8,7 +8,11 @@ class ProfileHeaderWidget extends StatelessWidget {
   final String fakultas;
   final String jurusan;
   final String no_whatsapp;
-  final VoidCallback onEditWaTap; // Fungsi yang akan dipanggil saat tombol Edit WA diklik
+
+  // 🟢 TAMBAHAN 1: DEFINISI PROPERTI photoUrl
+  final String? photoUrl;
+
+  final VoidCallback onEditWaTap;
   final VoidCallback onEditPhotoTap;
 
   const ProfileHeaderWidget({
@@ -19,6 +23,8 @@ class ProfileHeaderWidget extends StatelessWidget {
     required this.fakultas,
     required this.jurusan,
     required this.no_whatsapp,
+    // 🟢 TAMBAHAN 2: TERIMA DI CONSTRUCTOR
+    this.photoUrl,
     required this.onEditWaTap,
     required this.onEditPhotoTap,
   });
@@ -33,13 +39,22 @@ class ProfileHeaderWidget extends StatelessWidget {
           Stack(
             alignment: Alignment.bottomRight,
             children: [
-              const CircleAvatar(
+              // 🟢 PENGGUNAAN photoUrl untuk gambar jaringan
+              CircleAvatar(
                 radius: 40,
-                backgroundColor: Colors.blue,
-                child: Icon(Icons.person, size: 40, color: Colors.white),
+                // Jika photoUrl ada dan tidak kosong, gunakan NetworkImage
+                backgroundImage: (photoUrl != null && photoUrl!.isNotEmpty)
+                    ? NetworkImage(photoUrl!) as ImageProvider
+                    : const AssetImage('assets/default_avatar.png'), // Ganti dengan path aset default Anda
+                // Jika tidak ada photoUrl, tampilkan ikon default
+                child: (photoUrl == null || photoUrl!.isEmpty)
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    : null, // Jangan tampilkan ikon jika ada gambar
+                backgroundColor: Colors.blue, // Warna latar belakang jika ikon default yang tampil
               ),
+
               GestureDetector(
-                onTap: onEditPhotoTap, // 🔥 PANGGIL CALLBACK BARU DI ICON PENSIL
+                onTap: onEditPhotoTap,
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
@@ -90,8 +105,8 @@ class ProfileHeaderWidget extends StatelessWidget {
           _buildProfileDetail(
             label: "No. WhatsApp",
             value: no_whatsapp,
-            showEdit: true, // Tombol Edit untuk No. WA
-            onEditTap: onEditWaTap, // Menggunakan fungsi yang dilewatkan
+            showEdit: true,
+            onEditTap: onEditWaTap,
           ),
         ],
       ),

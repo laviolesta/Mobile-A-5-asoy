@@ -26,7 +26,7 @@ android {
         applicationId = "com.example.apk_sewami"
         
         // Firebase butuh minimal 21/23. Kita set 23 biar aman.
-        minSdk = 23 
+        minSdkVersion(flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
