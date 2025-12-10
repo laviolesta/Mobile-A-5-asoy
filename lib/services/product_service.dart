@@ -306,7 +306,7 @@ class ProductService {
   // 🟢 FUNGSI BARU (confirmReturn)
   // [Mengembalikan status produk menjadi 'isAvailable: true' dan memindahkan rental ke riwayat]
   // =========================================================
-  Future<String?> confirmReturn(String rentalId, String productId) async {
+  Future<String?> confirmReturn(String rentalId, String productId, String ownerId) async {
     if (currentUserId == null) return "Pengguna belum login.";
 
     final rentalRef = _firestore.collection('rentals').doc(rentalId);
@@ -326,6 +326,7 @@ class ProductService {
         'status': 'Selesai',
         'returnConfirmedAt': FieldValue.serverTimestamp(),
         'returnRequested': FieldValue.delete(), // Hapus flag permintaan
+        'confirmationOwner': true,
       });
 
       // 2. Update dokumen Produk agar Tersedia Kembali

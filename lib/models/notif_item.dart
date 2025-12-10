@@ -7,6 +7,7 @@ class NotificationItem {
   final bool isRead;
   final DateTime? createdAt;
   final String? productId;
+  final String? rentalId;
 
   NotificationItem({
     required this.id,
@@ -15,6 +16,7 @@ class NotificationItem {
     this.isRead = false,
     this.createdAt,
     this.productId,
+    this.rentalId,
   });
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
@@ -50,6 +52,7 @@ class NotificationItem {
     bool? isRead,
     DateTime? createdAt,
     String? productId,
+    String? rentalId,
   }) {
     return NotificationItem(
       id: id ?? this.id,
@@ -58,6 +61,7 @@ class NotificationItem {
       isRead: isRead ?? this.isRead, // <-- Digunakan untuk mengubah status dibaca
       createdAt: createdAt ?? this.createdAt,
       productId: productId ?? this.productId,
+      rentalId: rentalId ?? this.rentalId,
     );
   }
 }
