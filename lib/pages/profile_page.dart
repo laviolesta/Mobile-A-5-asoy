@@ -5,7 +5,7 @@ import '../widgets/profil_header_widget.dart';
 import '../widgets/product_card_widget.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
-import '../models/user_model.dart';      
+import '../models/user_model.dart';
 import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
@@ -24,7 +24,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isEditing = false; 
 
   // Data produk yang disukai (diubah menjadi mutable List di State)
-  List<Map<String, dynamic>> likedProducts = [
+  List<Map<String, dynamic>> liked_products = [
     {
       'name': 'Baju Putih',
       'price': 'Rp3.000/hari',
@@ -56,7 +56,7 @@ class _ProfilePageState extends State<ProfilePage> {
       try {
         await _userService.updateLikedProducts(
           currentUserId, 
-          likedProducts, // Kirim list Map yang sudah dimodifikasi (dihapus)
+          liked_products, // Kirim list Map yang sudah dimodifikasi (dihapus)
         );
         
         // Update UI state setelah berhasil menyimpan
@@ -83,7 +83,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _deleteLikedProduct(int index) {
     
     setState(() {
-      likedProducts.removeAt(index);
+      liked_products.removeAt(index);
     });
   }
 
@@ -372,9 +372,9 @@ class _ProfilePageState extends State<ProfilePage> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: likedProducts.length,
+            itemCount: liked_products.length,
             itemBuilder: (context, index) {
-              final product = likedProducts[index];
+              final product = liked_products[index];
               
               // 🔥 Menggunakan Stack untuk menampilkan icon 'X' di atas card
               return Stack(
