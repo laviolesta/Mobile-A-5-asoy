@@ -44,8 +44,7 @@ dependencies:
   intl: ^0.18.1
   geolocator: ^11.0.0 # Untuk mendapatkan koordinat GPS
   geocoding: ^2.1.1  # Untuk mengubah koordinat menjadi alamat
-  firebase_storage: 13.0.4
->>>>>>> ed47c6e5d794e05834b43a45fb88ebd4637fc454
+
 
 dev_dependencies:
   flutter_test:
