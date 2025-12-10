@@ -1,4 +1,7 @@
+// File: sewa_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/header_widget.dart';
 import '../../widgets/bottom_navbar.dart';
 import '../../utils/no_animation_route.dart';
@@ -7,10 +10,10 @@ import '../rating_ulasan_page.dart';
 import '../home_page.dart';
 import '../notifikasi_page.dart';
 import 'sewakan_page.dart';
-// Tambahkan ProductService
 import '../../services/product_service.dart';
+import 'package:intl/intl.dart';
 
-// --- WIDGET KONTROL NAVIGASI BERSAMA (RentalHeaderControl) ---
+// ... (RentalHeaderControl tidak berubah) ...
 class RentalHeaderControl extends StatelessWidget {
   final bool isSewakanActive;
 
@@ -18,6 +21,8 @@ class RentalHeaderControl extends StatelessWidget {
     super.key,
     required this.isSewakanActive,
   });
+
+  // ... (Sisa kode RentalHeaderControl) ...
 
   void _navigateToPage(BuildContext context, Widget targetPage) {
     Navigator.pushReplacement(
@@ -61,13 +66,13 @@ class RentalHeaderControl extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 SizedBox(
-                  width: 60,
-                  height: 3,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: isSewakanActive ? Colors.transparent : activeColor,
-                    ),
-                  ),
+                    width: 60,
+                    height: 3,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: isSewakanActive ? Colors.transparent : activeColor,
+                      ),
+                    )
                 )
               ],
             ),
@@ -87,13 +92,13 @@ class RentalHeaderControl extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 SizedBox(
-                  width: 60,
-                  height: 3,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: isSewakanActive ? activeColor : Colors.transparent,
-                    ),
-                  ),
+                    width: 60,
+                    height: 3,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: isSewakanActive ? activeColor : Colors.transparent,
+                      ),
+                    )
                 )
               ],
             ),
@@ -103,11 +108,10 @@ class RentalHeaderControl extends StatelessWidget {
     );
   }
 }
-// --- END WIDGET KONTROL NAVIGASI BERSAMA ---
 
 
 // =======================================================
-// PERBAIKAN: UBAH MENJADI STATEFUL WIDGET
+// CLASS SEWA PAGE (MENGGUNAKAN FIRESTORE STREAM)
 // =======================================================
 class SewaPage extends StatefulWidget {
   const SewaPage({super.key});
@@ -117,58 +121,20 @@ class SewaPage extends StatefulWidget {
 }
 
 class _SewaPageState extends State<SewaPage> {
-  // Variabel untuk menyimpan liked products dan service
   final ProductService _productService = ProductService();
   List<String> _likedProducts = [];
 
-  // ======= DATA PRODUK YANG SEDANG DISEWA USER =======
-  List<Map<String, dynamic>> get currentRent => [
-    {
-      "name": "Kalkulator Ilmiah (Sedang Disewa)",
-      "price": "Rp2.000/hari",
-      "location": "Gowa, Jl. Mawar",
-      "image": "assets/produk/kalkulator.png",
-      "rating": "4.9",
-      "rentedCount": "21",
-      "favorite": 20,
-      "rentalDuration": "Berakhir 12/12/2025",
-      "id": "rent_001", // Tambahkan ID dummy
-    },
-    {
-      "name": "Kompor Portable (Sedang Disewa)",
-      "price": "Rp3.000/hari",
-      "location": "Tamalanrea",
-      "image": "assets/produk/kompor.png",
-      "rating": "4.8",
-      "rentedCount": "15",
-      "favorite": 10,
-      "rentalDuration": "Berakhir 15/01/2026",
-      "id": "rent_002",
-    },
-  ];
+  late Stream<QuerySnapshot> _currentRentStream;
+  late Stream<QuerySnapshot> _rentHistoryStream;
 
-  // ======= DATA RIWAYAT SEWA USER =======
-  List<Map<String, dynamic>> get rentHistory => [
-    {
-      "name": "Baju Putih",
-      "price": "Rp3.000/hari",
-      "location": "Gowa, Jl. Kelapa",
-      "image": "assets/produk/baju_putih.png",
-      "id": "hist_001", // Tambahkan ID dummy
-    },
-    {
-      "name": "Jas Hitam", // Ubah nama agar berbeda
-      "price": "Rp4.000/hari",
-      "location": "Gowa, Jl. Kelapa",
-      "image": "assets/produk/jas_hitam.png",
-      "id": "hist_002",
-    },
-  ];
 
   @override
   void initState() {
     super.initState();
     _loadLikedProducts();
+
+    _currentRentStream = _productService.getCurrentRentals();
+    _rentHistoryStream = _productService.getRentalHistory();
   }
 
   void _loadLikedProducts() async {
@@ -200,19 +166,99 @@ class _SewaPageState extends State<SewaPage> {
     );
   }
 
-  // === CARD PRODUK YANG SEDANG DISEWA (Mirip HomePage) ===
-  // 💡 Tambahkan itemWidth dan itemHeight sebagai parameter
-  Widget _buildRentedProductCard(
-      BuildContext context,
-      Map<String, dynamic> item,
-      double itemWidth,
-      double itemHeight,
-      ) {
-    const bool isRented = true;
-    final bool isProductLiked = _likedProducts.contains(item['id']);
+  // === FUNGSI KEMBALIKAN PRODUK ===
+  void _handleReturnProduct(BuildContext context, String rentalId, String productName) async {
+    final result = await _productService.processReturn(rentalId);
 
-    // kalkulasi image height berdasarkan lebar item (sama seperti di HomePage)
-    final double imageHeight = itemWidth * 0.55;
+    if (mounted) {
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permintaan pengembalian berhasil diajukan. Menunggu konfirmasi pemilik.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengajukan pengembalian: $result')),
+        );
+      }
+    }
+  }
+
+  // === FUNGSI BARU: BATALKAN SEWA ===
+  void _handleCancelRental(BuildContext context, String rentalId, String productId, String productName) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Batalkan Sewa"),
+        content: Text("Anda yakin ingin membatalkan sewa produk '$productName'? Produk akan tersedia kembali."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Batal")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Ya, Batalkan", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final result = await _productService.cancelRental(rentalId, productId);
+
+      if (mounted) {
+        if (result == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sewa produk $productName berhasil dibatalkan.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal membatalkan sewa: $result')),
+          );
+        }
+      }
+    }
+  }
+
+
+  // === CARD PRODUK YANG SEDANG DISEWA ===
+  Widget _buildRentedProductCard(BuildContext context, Map<String, dynamic> item) {
+    final productData = item['productData'] as Map<String, dynamic>? ?? {};
+    final String rentalId = item['id'] ?? 'N/A';
+    final String productId = productData['id'] ?? 'N/A'; // Ambil productId
+
+    final bool isReturnRequested = item['returnRequested'] as bool? ?? false;
+    final bool isProductLiked = _likedProducts.contains(productId);
+
+    final name = productData['name'] ?? 'Nama Produk';
+    final price = productData['price'] ?? 'N/A';
+    final location = productData['location'] ?? 'Lokasi';
+    final imageUrl = productData['imageUrl'] ?? '';
+    final likesCount = productData['likesCount'] ?? 0;
+
+    final Timestamp endDateTimestamp = item['endDate'] as Timestamp? ?? Timestamp.now();
+
+    final double averageRating = (productData['averageRating'] is num) ? (productData['averageRating'] as num).toDouble() : 0.0;
+    final int rentedCount = productData['rentedCount'] ?? 0;
+    final String ratingDisplay = averageRating.toStringAsFixed(1);
+
+    const double imageHeight = 150;
+
+    // =======================================================
+    // 🚀 LOGIKA TAMPILAN STATUS DISEWA
+    // =======================================================
+    String statusDisplay = 'DISEWA';
+    Color statusColor = Colors.red;
+
+    String rentalDetail;
+    bool showKembalikanButton;
+    bool showCancelButton = true; // Default, tampilkan tombol Batalkan
+
+    if (isReturnRequested) {
+      rentalDetail = 'Menunggu Konfirmasi Pengembalian';
+      showKembalikanButton = false;
+      showCancelButton = false; // Jika sudah request return, batalkan sewa tidak relevan
+    } else {
+      rentalDetail = 'Berakhir ${DateFormat('dd/MM/yyyy').format(endDateTimestamp.toDate())}';
+      showKembalikanButton = true;
+      // showCancelButton tetap true
+    }
+    // =======================================================
+
 
     return GestureDetector(
       onTap: () async {
@@ -220,7 +266,7 @@ class _SewaPageState extends State<SewaPage> {
           context,
           NoAnimationPageRoute(
             page: DetailPage(
-              product: item,
+              product: productData,
               isOwnerView: false,
               likedProducts: _likedProducts,
             ),
@@ -243,106 +289,124 @@ class _SewaPageState extends State<SewaPage> {
                 ),
               ],
             ),
-            child: SizedBox( // 💡 Gunakan SizedBox di sini
-              width: itemWidth,
-              height: itemHeight,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Gambar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      height: imageHeight, // 💡 Gunakan imageHeight yang dihitung
-                      width: double.infinity,
-                      color: Colors.grey[200],
-                      child: item["image"] != null && item["image"].startsWith('assets/')
-                          ? Image.asset(item["image"], fit: BoxFit.cover,)
-                          : const Icon(Icons.image, size: 50),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Gambar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    height: imageHeight,
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Center(
+                          child: Icon(Icons.image_not_supported, size: 40, color: Colors.black38)
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                      },
                     ),
                   ),
+                ),
 
-                  const SizedBox(height: 8), // 💡 Ubah 10 menjadi 8 agar lebih rapat
-                  Text(
-                    item["name"],
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 2, // 💡 MaxLines 2 untuk mencegah overflow pada nama panjang
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    item["price"],
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 4), // 💡 Ubah 2 menjadi 4
-                  Row(
+                const SizedBox(height: 8),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.location_on, size: 12, color: Colors.grey),
-                      const SizedBox(width: 4), // 💡 Ubah 2 menjadi 4
-                      Expanded(
-                        child: Text(
-                          item["location"] ?? "",
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      )
-                    ],
-                  ),
-
-                  const Spacer(), // 💡 Gunakan Spacer untuk mendorong ke bawah
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                      // Nama Produk
                       Text(
-                        "⭐ ${item["rating"]} | ${item["rentedCount"]} tersewa",
-                        style: const TextStyle(fontSize: 11),
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      // Harga
+                      Text(
+                        price,
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      // Lokasi
                       Row(
                         children: [
-                          Icon(
-                            isProductLiked ? Icons.favorite : Icons.favorite_border,
-                            color: isProductLiked ? Colors.red : Colors.grey,
-                            size: 16,
+                          const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Expanded(
+                              child: Text(
+                                location,
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                          )
+                        ],
+                      ),
+
+                      const Spacer(),
+
+                      // Rating dan Favorite
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "⭐ $ratingDisplay | $rentedCount tersewa",
+                            style: const TextStyle(fontSize: 11),
                           ),
-                          const SizedBox(width: 6), // 💡 Ubah 2 menjadi 6
-                          Text("${item["favorite"]}", style: const TextStyle(fontSize: 12)),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.favorite,
+                                color: isProductLiked ? Colors.red : Colors.grey,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text("$likesCount", style: const TextStyle(fontSize: 12)),
+                            ],
+                          )
                         ],
                       )
                     ],
-                  )
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
 
           // Overlay Status SEDANG DISEWA
-          if (isRented)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.35),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "SEDANG DISEWA",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.65),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      statusDisplay,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item["rentalDuration"] ?? "Tanggal tidak diketahui",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                      const SizedBox(height: 8),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      rentalDetail,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Tombol Kembalikan (Hanya muncul jika showKembalikanButton true)
+                    if (showKembalikanButton)
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
@@ -353,27 +417,49 @@ class _SewaPageState extends State<SewaPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Mengurus pengembalian ${item["name"]}')),
-                          );
-                        },
+                        onPressed: () => _handleReturnProduct(context, rentalId, name),
                         child: const Text('Kembalikan'),
                       ),
-                    ],
-                  ),
+
+                    // Tombol BATALKAN SEWA (Hanya muncul jika showCancelButton true)
+                    if (showCancelButton)
+                      Padding(
+                        padding: EdgeInsets.only(top: showKembalikanButton ? 4.0 : 0.0), // Tambahkan jarak jika tombol Kembalikan ada
+                        child: TextButton(
+                          onPressed: () => _handleCancelRental(context, rentalId, productId, name),
+                          child: const Text(
+                            'Batalkan Sewa',
+                            style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Colors.white70
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
   }
 
+  // ... (Sisanya _buildHistoryProduct dan build() tidak berubah) ...
   // === RIWAYAT PRODUK COMPACT (Sewa Lagi) ===
-  // (Tidak diubah, karena ini adalah layout linear yang berbeda)
   Widget _buildHistoryProduct(BuildContext context, Map<String, dynamic> item) {
-    // ... kode _buildHistoryProduct tetap sama ...
+    // Item adalah dokumen 'rentals' dengan status 'Selesai'
+    final productData = item['productData'] as Map<String, dynamic>? ?? {};
+
+    // Ambil data produk dari productData
+    final name = productData['name'] ?? 'Nama Produk';
+    final price = productData['price'] ?? 'N/A';
+    final location = productData['location'] ?? 'Lokasi';
+    final imageUrl = productData['imageUrl'] ?? ''; // Diubah ke string kosong
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(8),
@@ -391,30 +477,25 @@ class _SewaPageState extends State<SewaPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Gambar
+          // 1. Gambar (Disederhanakan untuk hanya menggunakan Image.network)
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: item["image"] != null && item["image"].startsWith('assets/')
-                ? Image.asset(
-              item["image"],
-              height: 60,
-              width: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 60,
-                width: 60,
-                color: Colors.grey[200],
-                child: const Center(
-                  child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
-                ),
-              ),
-            )
-                : Container(
+            child: Container(
               height: 60,
               width: 60,
               color: Colors.grey[200],
-              child: const Center(
-                child: Icon(Icons.image, size: 30, color: Colors.grey),
+              child: Image.network(
+                imageUrl,
+                height: 60,
+                width: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const Center(
+                  child: Icon(Icons.image_not_supported, size: 30, color: Colors.grey),
+                ),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                },
               ),
             ),
           ),
@@ -426,18 +507,18 @@ class _SewaPageState extends State<SewaPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item["name"],
+                  name,
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 13),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  item["price"],
+                  price,
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
                 Text(
-                  item["location"],
+                  location,
                   style: const TextStyle(fontSize: 10, color: Colors.grey),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -452,7 +533,16 @@ class _SewaPageState extends State<SewaPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const SizedBox(height: 28),
+              // 💡 Teks status selesai di riwayat
+              const Text(
+                  "SELESAI",
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green
+                  )
+              ),
+              const SizedBox(height: 4), // Disesuaikan jarak
               Row(
                 children: [
                   // Tombol Sewa Lagi
@@ -472,7 +562,7 @@ class _SewaPageState extends State<SewaPage> {
                         context,
                         NoAnimationPageRoute(
                           page: DetailPage(
-                            product: item,
+                            product: productData, // Gunakan productData
                             isOwnerView: false,
                             likedProducts: _likedProducts,
                           ),
@@ -499,7 +589,7 @@ class _SewaPageState extends State<SewaPage> {
                       Navigator.push(
                         context,
                         NoAnimationPageRoute(
-                          page: RatingUlasanPage(product: item),
+                          page: RatingUlasanPage(product: productData), // Gunakan productData
                         ),
                       );
                     },
@@ -514,32 +604,8 @@ class _SewaPageState extends State<SewaPage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
-    // === PERHITUNGAN RESPONSIVITAS DARI HOMEPAGE ===
-    final double screenWidth = MediaQuery.of(context).size.width;
-    const double horizontalPadding = 16.0 * 2; // padding horizontal yang dipakai di GridView
-    const double gridSpacing = 12.0;
-
-    int crossAxisCount = 2;
-    if (screenWidth >= 900) {
-      crossAxisCount = 4;
-    } else if (screenWidth >= 700) {
-      crossAxisCount = 3;
-    } else {
-      crossAxisCount = 2;
-    }
-
-    final double usableWidth = screenWidth - horizontalPadding - (gridSpacing * (crossAxisCount - 1));
-    final double itemWidth = usableWidth / crossAxisCount;
-
-    // Tentukan target tinggi kartu (relatif)
-    final double itemHeight = itemWidth * 1.25; // 125% dari lebar
-    final double childAspectRatio = itemWidth / itemHeight;
-    // === AKHIR PERHITUNGAN RESPONSIVITAS ===
-
-
     return Scaffold(
       body: Column(
         children: [
@@ -555,7 +621,7 @@ class _SewaPageState extends State<SewaPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // === PRODUK YANG KAMU SEWA ===
+                  // === PRODUK YANG KAMU SEWA (AKTIF/PENDING) ===
                   const Text(
                     "Produk yang kamu sewa",
                     style: TextStyle(
@@ -564,22 +630,45 @@ class _SewaPageState extends State<SewaPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  // ==== GRID PRODUK DISEWA (StreamBuilder) ====
+                  StreamBuilder<QuerySnapshot>(
+                    stream: _currentRentStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  // ==== GRID PRODUK DISEWA (SUDAH RESPONSIVE) ====
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: currentRent.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount, // Gunakan hasil perhitungan
-                      crossAxisSpacing: gridSpacing,
-                      mainAxisSpacing: gridSpacing,
-                      childAspectRatio: childAspectRatio, // Gunakan hasil perhitungan
-                    ),
-                    itemBuilder: (context, index) {
-                      final item = currentRent[index];
-                      // 💡 Panggil dengan parameter itemWidth dan itemHeight
-                      return _buildRentedProductCard(context, item, itemWidth, itemHeight);
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+
+                      final List<DocumentSnapshot> activeRentals = snapshot.data?.docs ?? [];
+
+                      if (activeRentals.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.only(top: 10),
+                          child: Center(child: Text("Belum ada produk yang sedang kamu sewa.")),
+                        );
+                      }
+
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: activeRentals.length,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.65,
+                        ),
+                        itemBuilder: (context, index) {
+                          final doc = activeRentals[index];
+                          final item = doc.data() as Map<String, dynamic>;
+                          item['id'] = doc.id; // Tambahkan ID dokumen penyewaan (rentalId)
+
+                          return _buildRentedProductCard(context, item);
+                        },
+                      );
                     },
                   ),
                   const SizedBox(height: 20),
@@ -594,11 +683,35 @@ class _SewaPageState extends State<SewaPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // ==== RIWAYAT PRODUK COMPACT ====
-                  Column(
-                    children: rentHistory.map((item) {
-                      return _buildHistoryProduct(context, item);
-                    }).toList(),
+                  // ==== RIWAYAT PRODUK COMPACT (StreamBuilder) ====
+                  StreamBuilder<QuerySnapshot>(
+                    stream: _rentHistoryStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+
+                      final List<DocumentSnapshot> historyRentals = snapshot.data?.docs ?? [];
+
+                      if (historyRentals.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.only(top: 10),
+                          child: Center(child: Text("Riwayat penyewaan masih kosong.")),
+                        );
+                      }
+
+                      return Column(
+                        children: historyRentals.map((doc) {
+                          final item = doc.data() as Map<String, dynamic>;
+                          item['id'] = doc.id; // Tambahkan ID dokumen riwayat
+                          return _buildHistoryProduct(context, item);
+                        }).toList(),
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
                 ],

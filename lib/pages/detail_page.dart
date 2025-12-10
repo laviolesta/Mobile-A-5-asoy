@@ -3,19 +3,24 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'owner_profile_page.dart';
 
-// Import services dan model (Asumsi path ini benar)
+// Import services
 import '../../services/product_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Import Halaman Tujuan
+import 'sewa/sewa_page.dart';
+import '../../utils/no_animation_route.dart';
 
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> product;
-  final bool isOwnerView; // BARU: True jika dibuka dari halaman Sewakan
-  final List<String> likedProducts; // BARU: Daftar ID produk yang disukai
+  final bool isOwnerView;
+  final List<String> likedProducts;
 
   const DetailPage({
     super.key,
     required this.product,
-    required this.isOwnerView, // Wajib diisi
-    required this.likedProducts, // Wajib diisi
+    required this.isOwnerView,
+    required this.likedProducts,
   });
 
   @override
@@ -25,44 +30,68 @@ class DetailPage extends StatefulWidget {
 class _DetailPageState extends State<DetailPage> {
   final ProductService _productService = ProductService();
   late bool isLiked;
+  late int currentLikesCount;
+
+  // Stream untuk ulasan (reviews)
+  late Stream<QuerySnapshot> _reviewsStream;
+
+  // Data Pemilik (untuk ditampilkan di bagian 'Pemilik')
+  String get ownerName => widget.product["ownerName"] ?? "Pemilik Tidak Dikenal";
+  String get ownerProfileUrl => widget.product["ownerProfileUrl"] ?? "";
 
   @override
   void initState() {
     super.initState();
-    // PERBAIKAN: Pastikan 'id' adalah String sebelum membandingkan.
-    // Gunakan 'as String?' dan null-check pada id.
     final productId = widget.product['id'] as String?;
 
-    // Inisialisasi status like: jika productId null, anggap tidak disukai (false).
+    // Inisialisasi status like dan jumlah likes
     isLiked = productId != null && widget.likedProducts.contains(productId);
+    currentLikesCount = widget.product["likesCount"] ?? 0;
+
+    // Inisialisasi Stream Reviews
+    if (productId != null) {
+      _reviewsStream = _productService.getProductReviews(productId);
+    } else {
+      _reviewsStream = Stream.empty();
+    }
   }
 
   Future<void> _toggleLike() async {
-    // Pastikan 'id' adalah String dan tidak null
     final productId = widget.product['id'] as String?;
     if (productId == null) return;
 
-    // Asumsi ProductService memiliki metode toggleLike
-    final success = await _productService.toggleProductLike(
-        productId, !isLiked); // Menggunakan productId yang sudah pasti String
+    final bool wasLiked = isLiked;
+
+    // Optimistic UI Update
+    setState(() {
+      isLiked = !wasLiked;
+      currentLikesCount += isLiked ? 1 : -1;
+    });
+
+    final success = await _productService.toggleProductLike(productId, isLiked);
 
     if (success) {
-      setState(() {
-        isLiked = !isLiked;
-        // Opsional: berikan feedback ke user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isLiked ? 'Produk disukai' : 'Suka dibatalkan')),
+      );
+    } else {
+      // Jika gagal, kembalikan state sebelumnya
+      if (mounted) {
+        setState(() {
+          isLiked = wasLiked;
+          currentLikesCount += isLiked ? 1 : -1;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isLiked ? 'Produk disukai' : 'Suka dibatalkan')),
+          const SnackBar(content: Text('Gagal memperbarui status suka')),
         );
-      });
+      }
     }
   }
 
   Future<void> _openWhatsApp() async {
-    // Gunakan nomor pemilik dari data produk jika tersedia
     final ownerPhone = widget.product['ownerPhone'] ?? '6281234567890';
     final Uri whatsapp = Uri.parse("https://wa.me/$ownerPhone");
 
-    // PERBAIKAN: Gunakan .toString() pada Uri untuk canLaunchUrl agar lebih kompatibel dengan versi terbaru
     if (await canLaunchUrl(whatsapp)) {
       await launchUrl(whatsapp, mode: LaunchMode.externalApplication);
     } else {
@@ -80,8 +109,8 @@ class _DetailPageState extends State<DetailPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: const Color(0xFF1E355D),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1E355D),
               onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
@@ -95,6 +124,22 @@ class _DetailPageState extends State<DetailPage> {
       final start = pickedDate.start;
       final end = pickedDate.end;
       final duration = end.difference(start).inDays + 1;
+
+      final productId = widget.product['id'] as String?;
+      final ownerId = widget.product['ownerId'] as String?;
+
+      // Safety check sebelum menampilkan dialog konfirmasi
+      if (productId == null || ownerId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Error: Data produk atau pemilik tidak lengkap.")),
+          );
+        }
+        return;
+      }
+
+      final productRef = FirebaseFirestore.instance.collection('products').doc(productId);
+
 
       showDialog(
         context: context,
@@ -110,13 +155,49 @@ class _DetailPageState extends State<DetailPage> {
               child: const Text("Batal"),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                // Tutup dialog konfirmasi
                 Navigator.pop(context);
-                // Lakukan aksi pengajuan sewa ke Firestore di sini!
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text("Penyewaan berhasil diajukan!")),
+
+                // Lakukan aksi pengajuan sewa ke Firestore
+                final result = await _productService.submitRentalRequest(
+                  productId: productId,
+                  startDate: start,
+                  endDate: end,
+                  ownerId: ownerId,
+                  productRef: productRef,
                 );
+
+                // --- START DEBUGGING ---
+                // Anda bisa tambahkan ini untuk melihat hasil submit:
+                // print("Submit Rental Result: $result");
+                // --- END DEBUGGING ---
+
+                if (mounted) {
+                  if (result == null) {
+                    // SUKSES: Tampilkan notifikasi dan pindah ke SewaPage
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text("Penyewaan berhasil diajukan! Menunggu konfirmasi.")),
+                    );
+
+                    // >>> NAVIGASI KE SEWAPAGE <<<
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      NoAnimationPageRoute(page: const SewaPage()),
+                      // Kunci: Kondisi ini memastikan SewaPage menjadi halaman root baru
+                          (route) => false,
+                    );
+
+
+                  } else {
+                    // GAGAL
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text("Gagal mengajukan penyewaan: $result")),
+                    );
+                  }
+                }
               },
               child: const Text("Konfirmasi"),
             ),
@@ -128,6 +209,13 @@ class _DetailPageState extends State<DetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Ambil data rating dan format
+    final double averageRating = (widget.product['averageRating'] is num) ? (widget.product['averageRating'] as num).toDouble() : 0.0;
+    final String ratingDisplay = averageRating.toStringAsFixed(1);
+
+    // Tentukan warna ikon like kondisional
+    final Color likeIconColor = isLiked ? Colors.red : Colors.grey;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -143,13 +231,13 @@ class _DetailPageState extends State<DetailPage> {
                   onTap: () => Navigator.pop(context),
                   child: const Icon(Icons.arrow_back_ios, color: Colors.black),
                 ),
-                // Tombol Like hanya muncul jika BUKAN Owner View
+                // Tombol Like di Pojok Kiri Atas
                 if (!widget.isOwnerView)
                   GestureDetector(
                     onTap: _toggleLike, // Menggunakan fungsi toggle
                     child: Icon(
                       isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: Colors.red,
+                      color: likeIconColor, // Menggunakan warna kondisional
                     ),
                   ),
               ],
@@ -167,6 +255,10 @@ class _DetailPageState extends State<DetailPage> {
                     child: Image.network(
                       widget.product["imageUrl"] ?? "https://via.placeholder.com/260",
                       height: 260,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Center(
+                        child: Icon(Icons.image_not_supported, size: 80, color: Colors.black38),
+                      ),
                     ),
                   ),
 
@@ -176,7 +268,7 @@ class _DetailPageState extends State<DetailPage> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      widget.product["name"] ?? 'Nama Produk Tidak Diketahui', // Tambah null check pada title
+                      widget.product["name"] ?? 'Nama Produk Tidak Diketahui',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -208,9 +300,12 @@ class _DetailPageState extends State<DetailPage> {
                             if (!widget.isOwnerView)
                               Row(
                                 children: [
-                                  const Icon(Icons.favorite, color: Colors.red, size: 18),
+                                  const Icon(
+                                      Icons.favorite,
+                                      color: Colors.red,
+                                      size: 18),
                                   const SizedBox(width: 4),
-                                  Text("${widget.product["likesCount"] ?? 0}"),
+                                  Text("$currentLikesCount"), // Menggunakan currentLikesCount
                                 ],
                               )
                           ],
@@ -247,55 +342,27 @@ class _DetailPageState extends State<DetailPage> {
                       widget.product["description"] ?? "Tidak ada deskripsi.",
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("Kondisi barang: ${widget.product["condition"] ?? 'Tidak diketahui'}"),
-                  ),
 
                   const Divider(height: 32),
 
-                  /// RATING
+                  /// RATING (Dinamis dari averageRating)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
                         const Icon(Icons.star, color: Colors.orange),
                         const SizedBox(width: 4),
-                        Text("${widget.product["rating"] ?? 'N/A'}  Rating Produk"), // Ambil dari data produk jika ada
+                        Text("$ratingDisplay Rating Produk"),
+                        // Tambahkan jumlah ulasan (optional)
+                        Text(" (${widget.product["reviewCount"] ?? 0} Ulasan)", style: const TextStyle(color: Colors.grey)),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 10),
 
-                  /// REVIEW (Satu contoh Review)
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      children: [
-                        CircleAvatar(child: Icon(Icons.person)),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Ref*****",
-                                  style: TextStyle(fontWeight: FontWeight.bold)),
-                              Text(
-                                "Barangnya masih bagus. Masih mauka nanti sewa yah hehe",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
+                  /// REVIEW LIST (Menggunakan StreamBuilder)
+                  _buildReviewList(),
 
                   const Divider(height: 32),
 
@@ -312,13 +379,20 @@ class _DetailPageState extends State<DetailPage> {
                           ),
                         ),
                         ListTile(
-                          leading: const CircleAvatar(child: Icon(Icons.person)),
-                          title: Text(widget.product["ownerName"] ?? "Nining Karins"),
+                          leading: CircleAvatar(
+                            // 💡 Menggunakan URL profil pemilik jika tersedia
+                            backgroundImage: ownerProfileUrl.isNotEmpty
+                                ? NetworkImage(ownerProfileUrl) as ImageProvider
+                                : null,
+                            child: ownerProfileUrl.isEmpty ? const Icon(Icons.person) : null,
+                          ),
+                          title: Text(ownerName),
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => const OwnerProfilePage(),
+                                // TODO: Kirim ID Pemilik ke OwnerProfilePage
                               ),
                             );
                           },
@@ -339,7 +413,7 @@ class _DetailPageState extends State<DetailPage> {
 
       /// ===== BOTTOM BAR (Hanya muncul jika BUKAN Owner View) =====
       bottomNavigationBar: widget.isOwnerView
-          ? null // Return null jika Owner View (menghilangkan BottomBar)
+          ? null
           : Container(
         padding: const EdgeInsets.all(12),
         decoration: const BoxDecoration(
@@ -384,6 +458,90 @@ class _DetailPageState extends State<DetailPage> {
           ],
         ),
       ),
+    );
+  }
+
+  // Widget baru untuk menampilkan daftar ulasan menggunakan StreamBuilder
+  Widget _buildReviewList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _reviewsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text("Error memuat ulasan: ${snapshot.error}"),
+          );
+        }
+
+        final List<DocumentSnapshot> reviews = snapshot.data?.docs ?? [];
+
+        if (reviews.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text("Belum ada ulasan untuk produk ini.", style: TextStyle(color: Colors.grey)),
+          );
+        }
+
+        // Tampilkan 3 ulasan teratas (atau semua jika kurang dari 3)
+        return Column(
+          children: reviews.take(3).map((reviewDoc) {
+            final reviewData = reviewDoc.data() as Map<String, dynamic>;
+            final reviewerName = reviewData['userName'] ?? 'Pengguna Anonim';
+            final comment = reviewData['comment'] ?? 'Tidak ada ulasan.';
+            final rating = reviewData['rating'] as num? ?? 0;
+            final userProfileUrl = reviewData['userProfileUrl'] as String? ?? '';
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    // 💡 Menggunakan URL profil user jika tersedia
+                    backgroundImage: userProfileUrl.isNotEmpty
+                        ? NetworkImage(userProfileUrl) as ImageProvider
+                        : null,
+                    child: userProfileUrl.isEmpty ? const Icon(Icons.person) : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(reviewerName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, color: Colors.orange, size: 14),
+                                Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12)),
+                              ],
+                            )
+                          ],
+                        ),
+                        Text(
+                          comment,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }
