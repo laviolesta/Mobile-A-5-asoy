@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/auth_service.dart'; // Import Backend
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -53,6 +54,7 @@ class _SignupPageState extends State<SignupPage> {
 
     // 4. Cek Hasil
     if (result == null) {
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Registrasi Berhasil! Silakan Login."), backgroundColor: Colors.green));
       Navigator.pop(context); // Kembali ke halaman sebelumnya

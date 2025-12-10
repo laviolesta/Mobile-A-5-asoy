@@ -41,8 +41,6 @@ dependencies:
   cloud_firestore: ^6.1.0
   url_launcher: ^6.2.5
   font_awesome_flutter: ^10.7.0
-  geolocator: ^11.0.0 # Untuk mendapatkan koordinat GPS
-  geocoding: ^2.1.1  # Untuk mengubah koordinat menjadi alamat
 
 dev_dependencies:
   flutter_test:
