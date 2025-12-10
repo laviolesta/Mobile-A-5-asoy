@@ -5,6 +5,7 @@ class NotificationService {
   // Batas notifikasi per halaman
   static const int _limit = 5;
 
+  //- -- FITUR MARK AS READ ---
   static Future<void> markAsRead(String notificationId) async {
     try {
       await FirebaseFirestore.instance
@@ -59,6 +60,7 @@ class NotificationService {
     }
   }
 
+  // --- FUNGSI SWIPE TO DELETE ---
   static Future<void> deleteNotification(String notificationId) async {
     try {
       await FirebaseFirestore.instance

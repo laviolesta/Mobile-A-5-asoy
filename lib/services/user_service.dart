@@ -94,10 +94,10 @@ class UserService {
   Future<void> updateLikedProducts(String userId, List<Map<String, dynamic>> likedProductsData) async {
     try {
       await _firestore.collection(_collection).doc(userId).update({
-        // Menyimpan seluruh list map ke dalam field 'likedProducts'
-        'likedProducts': likedProductsData, 
+        // Menyimpan seluruh list map ke dalam field 'liked_products'
+        'liked_products': likedProductsData, 
         // Optional: Anda bisa menambahkan timestamp update terakhir
-        'updatedAt': FieldValue.serverTimestamp(), 
+        'updated_at': FieldValue.serverTimestamp(), 
       });
       print("Liked products list updated successfully for ID: $userId");
     } catch (e) {
