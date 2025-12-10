@@ -19,7 +19,7 @@ class NotificationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isRead ? const Color.fromARGB(255, 224, 224, 224) : Colors.white,
+        color: isRead ? const Color.fromARGB(255, 176, 176, 176) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(

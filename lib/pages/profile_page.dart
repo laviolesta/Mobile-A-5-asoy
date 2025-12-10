@@ -15,88 +15,78 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final UserService _userService = UserService(); 
+  final UserService _userService = UserService();
   final AuthService _authService = AuthService();
-  final ImagePicker _picker = ImagePicker(); 
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); // Key untuk Snackbar
+  final ImagePicker _picker = ImagePicker();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  bool _isEditing = false; 
+  bool _isEditing = false;
+  List<String> _likedIdsToRemove = [];
 
-  // Data produk yang disukai (diubah menjadi mutable List di State)
-  List<Map<String, dynamic>> liked_products = [
-    {
-      'name': 'Baju Putih',
-      'price': 'Rp3.000/hari',
-      'location': 'Gowa, Jl.Kelapa',
-      'rating': 4.5,
-      'reviews': 8,
-      'likes': 6,
-    },
-    {
-      'name': 'Jas Hitam',
-      'price': 'Rp4.000/hari',
-      'location': 'Gowa, Jl. Kelapa',
-      'rating': 4.5,
-      'reviews': 8,
-      'likes': 7,
-    },
-  ];
+  void _showSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
 
-  void _toggleEditMode() async {
+  // ✅ KOREKSI FUNGSI _toggleEditMode
+  void _toggleEditMode(List<String> likedIdsFromStream) async {
+    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (currentUserId == null) {
+      _showSnackbar('Gagal menyimpan: Anda tidak terautentikasi.');
+      return;
+    }
+
     if (_isEditing) {
-      
-      final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
-      
-      if (currentUserId == null) {
-          _showSnackbar('Gagal menyimpan: Anda tidak terautentikasi.');
-          return;
-      }
+      // --- MODE SIMPAN ---
+
+      // Hitung ID produk yang tersisa dari ID ASLI di stream, dikurangi yang ditandai
+      final List<String> updatedLikedIds = likedIdsFromStream
+          .where((id) => !_likedIdsToRemove.contains(id))
+          .toList();
 
       try {
         await _userService.updateLikedProducts(
-          currentUserId, 
-          liked_products, // Kirim list Map yang sudah dimodifikasi (dihapus)
+          currentUserId,
+          updatedLikedIds,
         );
-        
-        // Update UI state setelah berhasil menyimpan
-        setState(() {
-          _isEditing = false;
-        });
-        _showSnackbar('Perubahan produk yang disukai telah disimpan.');
+
+        if (mounted) {
+          setState(() {
+            _isEditing = false;
+            _likedIdsToRemove = [];
+          });
+          _showSnackbar('Perubahan produk yang disukai telah disimpan.');
+        }
 
       } catch (e) {
         _showSnackbar('Gagal menyimpan perubahan: $e');
-        // Tetap di mode edit jika gagal menyimpan
-        return; 
+        return;
       }
 
     } else {
-      // Logic Edit (Saat tombol "Edit" ditekan)
+      // --- MODE EDIT (MEMULAI) ---
       setState(() {
         _isEditing = true;
+        _likedIdsToRemove = [];
       });
     }
   }
 
-  // Fungsi edit like 
-  void _deleteLikedProduct(int index) {
-    
+  void _deleteLikedProduct(String productId) {
     setState(() {
-      liked_products.removeAt(index);
+      if (!_likedIdsToRemove.contains(productId)) {
+        _likedIdsToRemove.add(productId);
+      }
     });
   }
 
-  void _showSnackbar(String message) {
-     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-  }
-
-  // Fungsi log-out
   Future<void> _logout() async {
     try {
       await _authService.signOut();
-      // Navigasi ke halaman login dan hapus semua rute sebelumnya
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (route) => false);
       }
@@ -105,7 +95,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // Fungsi yang akan dijalankan saat tombol edit No WA diklik
   void _showEditWaDialog(){
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) {
@@ -114,7 +103,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     final TextEditingController waController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -138,20 +127,15 @@ class _ProfilePageState extends State<ProfilePage> {
               child: const Text("Simpan"),
               onPressed: () async {
                 Navigator.of(context).pop();
-                
-                // Lakukan pembaruan ke Firestore
+
                 try {
                   await _userService.updateNoWhatsapp(
-                    currentUserId, 
+                    currentUserId,
                     waController.text.trim(),
                   );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Nomor WhatsApp berhasil diperbarui!')),
-                  );
+                  _showSnackbar('Nomor WhatsApp berhasil diperbarui!');
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal memperbarui No. WA: $e')),
-                  );
+                  _showSnackbar('Gagal memperbarui No. WA: $e');
                 }
               },
             ),
@@ -161,7 +145,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Fungsi Upload Foto
   void _showImageSourcePicker(String currentUserId) {
     showModalBottomSheet(
       context: context,
@@ -192,48 +175,41 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Fungsi handle image picker & upload (placeholder)
   Future<void> _pickImage(ImageSource source, String currentUserId) async {
     final XFile? pickedFile = await _picker.pickImage(source: source);
 
     if (pickedFile != null) {
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        const SnackBar(content: Text('Memulai proses upload foto...')),
-      );
+      if (!mounted) return;
+      _showSnackbar('Memulai proses upload foto...');
 
       try {
-        // 1. Upload pickedFile ke Firebase Storage & Dapatkan URL
         final String downloadURL = await _userService.uploadProfilePhoto(
-          currentUserId, 
+          currentUserId,
           pickedFile.path,
         );
 
-        // 2. Simpan URL ke Firestore
         await _userService.updateProfilePhotoUrl(
-          currentUserId, 
+          currentUserId,
           downloadURL,
         );
 
-        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-          const SnackBar(content: Text('Foto Profil berhasil diperbarui!')),
-        );
-        
+        if (!mounted) return;
+        _showSnackbar('Foto Profil berhasil diperbarui!');
+
       } catch (e) {
-        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-          SnackBar(content: Text('Gagal upload atau simpan URL: $e')),
-        );
+        if (!mounted) return;
+        _showSnackbar('Gagal upload atau simpan URL: $e');
       }
     }
   }
 
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
-      key: navigatorKey, // Pasang GlobalKey di Scaffold
+      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text("Profil Saya", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
@@ -248,7 +224,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (currentUserId == null) 
+            if (currentUserId == null)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(32.0),
@@ -268,31 +244,40 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: CircularProgressIndicator(),
                     ));
                   }
-                  
+
                   if (snapshot.hasData) {
                     final UserModel user = snapshot.data!;
-                    
-                    return ProfileHeaderWidget(
-                      nama: user.nama_lengkap,
-                      email: user.email, 
-                      nim: user.nim,
-                      fakultas: user.fakultas,
-                      jurusan: user.jurusan,
-                      no_whatsapp: user.no_whatsapp, 
-                      onEditWaTap: _showEditWaDialog, // 🔥 FUNGSI EDIT WA
-                      onEditPhotoTap: () => _showImageSourcePicker(currentUserId), // 🔥 FUNGSI EDIT FOTO
+                    final List<String> likedProducts = user.liked_products ?? [];
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ProfileHeaderWidget(
+                          nama: user.nama_lengkap,
+                          email: user.email,
+                          nim: user.nim,
+                          fakultas: user.fakultas,
+                          jurusan: user.jurusan,
+                          no_whatsapp: user.no_whatsapp,
+                          photoUrl: user.photoUrl,
+                          onEditWaTap: _showEditWaDialog,
+                          onEditPhotoTap: () => _showImageSourcePicker(currentUserId),
+                        ),
+
+                        const Divider(height: 1, thickness: 1, color: Colors.grey),
+
+                        // Mengirim ID produk dari stream
+                        _buildLikedProductsSection(context, likedProducts),
+                      ],
                     );
                   }
-                  
+
                   return const Center(child: Padding(
                     padding: EdgeInsets.all(32.0),
                     child: Text('Data profil tidak ditemukan.'),
                   ));
                 },
               ),
-
-            const Divider(height: 1, thickness: 1, color: Colors.grey),
-            _buildLikedProductsSection(context),
 
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -322,7 +307,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildLikedProductsSection(BuildContext context) {
+  Widget _buildLikedProductsSection(BuildContext context, List<String> likedIdsFromStream) {
+
+    // Daftar ID yang akan dicari detailnya (ID dari stream dikurangi ID yang ditandai untuk dihapus)
+    final List<String> currentLikedIdsToDisplay = likedIdsFromStream
+        .where((id) => !_likedIdsToRemove.contains(id))
+        .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -344,17 +335,16 @@ class _ProfilePageState extends State<ProfilePage> {
               SizedBox(
                 height: 30,
                 child: OutlinedButton(
-                  // 🔥 Tombol Edit/Simpan: Panggil _toggleEditMode
-                  onPressed: _toggleEditMode,
+                  // Mengirimkan daftar ID ASLI dari stream ke _toggleEditMode
+                  onPressed: () => _toggleEditMode(likedIdsFromStream),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                    side: BorderSide(color: _isEditing ? Colors.green : Colors.blue), // Warna berbeda
+                    side: BorderSide(color: _isEditing ? Colors.green : Colors.blue),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                   ),
                   child: Text(
-                    // 🔥 Ubah teks tombol berdasarkan state
                     _isEditing ? "Simpan" : "Edit",
                     style: TextStyle(fontSize: 14, color: _isEditing ? Colors.green : Colors.blue),
                   ),
@@ -363,51 +353,78 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
-        
+
         const SizedBox(height: 8),
 
         SizedBox(
-          height: 250, 
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: liked_products.length,
-            itemBuilder: (context, index) {
-              final product = liked_products[index];
-              
-              // 🔥 Menggunakan Stack untuk menampilkan icon 'X' di atas card
-              return Stack(
-                clipBehavior: Clip.none, // Penting agar icon 'X' tidak terpotong
-                children: [
-                  ProductCardWidget(product: product),
-                  
-                  if (_isEditing) // Hanya tampilkan saat mode edit
-                    Positioned(
-                      top: -5, // Posisikan sedikit di luar batas atas Card
-                      right: 15, // Sesuaikan posisi horizontal
-                      child: GestureDetector(
-                        onTap: () => _deleteLikedProduct(index), // Panggil fungsi hapus
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2), // Border putih agar terlihat
-                          ),
-                          padding: const EdgeInsets.all(2),
-                          child: const Icon(
-                            Icons.close,
-                            size: 14,
-                            color: Colors.white,
+          height: 250,
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            // Mengirim daftar ID yang sudah difilter untuk ditampilkan
+            stream: _userService.getLikedProductDetailsStream(currentLikedIdsToDisplay),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final List<Map<String, dynamic>> products = snapshot.data ?? [];
+
+              if (products.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      _isEditing && likedIdsFromStream.isNotEmpty
+                          ? "Semua produk disukai telah ditandai untuk dihapus. Klik Simpan untuk konfirmasi."
+                          : "Anda belum menyukai produk apa pun.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  final productId = product['id'] as String;
+
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ProductCardWidget(product: product),
+
+                      if (_isEditing)
+                        Positioned(
+                          top: -5,
+                          right: 15,
+                          child: GestureDetector(
+                            onTap: () => _deleteLikedProduct(productId),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              padding: const EdgeInsets.all(2),
+                              child: const Icon(
+                                Icons.close,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  );
+                },
               );
             },
           ),
         ),
-        
+
         const SizedBox(height: 20),
       ],
     );
