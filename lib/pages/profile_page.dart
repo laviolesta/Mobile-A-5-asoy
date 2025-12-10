@@ -281,7 +281,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       jurusan: user.jurusan,
                       no_whatsapp: user.no_whatsapp, 
                       onEditWaTap: _showEditWaDialog, // 🔥 FUNGSI EDIT WA
-                      onEditPhotoTap: () => _showImageSourcePicker(currentUserId!), // 🔥 FUNGSI EDIT FOTO
+                      onEditPhotoTap: () => _showImageSourcePicker(currentUserId), // 🔥 FUNGSI EDIT FOTO
                     );
                   }
                   
