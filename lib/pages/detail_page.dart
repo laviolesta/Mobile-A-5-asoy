@@ -61,6 +61,7 @@ class _DetailPageState extends State<DetailPage> {
 
   Future<void> _toggleLike() async {
     final productId = widget.product['id'] as String?;
+    final ownerId = widget.product['ownerId'] as String;
     final currentUserId = _auth.currentUser?.uid; // ⬅️ AMBIL USER ID
 
     if (productId == null) return;
@@ -73,6 +74,12 @@ class _DetailPageState extends State<DetailPage> {
       return;
     }
 
+    if (currentUserId == ownerId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anda tidak bisa menyukai produk Anda sendiri.')),
+      );
+      return;
+    }
 
     final bool wasLiked = isLiked;
 
@@ -90,6 +97,25 @@ class _DetailPageState extends State<DetailPage> {
 
 
     // Cek keberhasilan kedua operasi
+    if (isLiked) { // Notifikasi hanya dikirim saat aksi LIKE (isLiked = true)
+        
+        // 1. Ambil nama user yang baru saja menyukai
+        final likerName = await _getCurrentUserName();
+        final productName = widget.product["name"] ?? 'Produk Tidak Diketahui';
+
+        try {
+            await NotificationService.createNotification( // Panggil NotificationService
+                title: "Produk Anda Disukai!",
+                description: "$likerName menyukai produk Anda: $productName.",
+                userId: ownerId, // Targetkan ke pemilik produk
+                productId: productId, // Berikan ID produk untuk tautan cepat
+            );
+        } catch (e) {
+            print("Gagal mengirim notifikasi like ke pemilik: $e");
+            // Notifikasi gagal, tapi proses like utama tetap sukses
+        }
+    }
+
     if (productSuccess && userSuccess == null) { // userSuccess null = berhasil
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(isLiked ? 'Produk disukai' : 'Suka dibatalkan')),
@@ -182,8 +208,8 @@ class _DetailPageState extends State<DetailPage> {
           title: const Text("Konfirmasi Penyewaan"),
           content: Text(
               "Anda menyewa produk dari ${start.day}/${start.month}/${start.year} "
-                  "sampai ${end.day}/${end.month}/${end.year} "
-                  "(${duration} hari)"),
+              "sampai ${end.day}/${end.month}/${end.year} "
+              "($duration hari)"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),

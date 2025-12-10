@@ -44,14 +44,14 @@ class _ProfilePageState extends State<ProfilePage> {
       // --- MODE SIMPAN ---
 
       // Hitung ID produk yang tersisa dari ID ASLI di stream, dikurangi yang ditandai
-      final List<String> updatedLikedIds = likedIdsFromStream
+      final List<String> liked_products = likedIdsFromStream
           .where((id) => !_likedIdsToRemove.contains(id))
           .toList();
 
       try {
         await _userService.updateLikedProducts(
           currentUserId,
-          updatedLikedIds,
+          liked_products,
         );
 
         if (mounted) {
