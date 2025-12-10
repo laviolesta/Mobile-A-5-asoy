@@ -8,22 +8,36 @@ class AuthService {
   // ignore: unused_field
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // --- FUNGSI LOGIN ---
+  // --- FUNGSI LOGIN (SIGN IN) ---
   Future<String?> signIn({required String email, required String password}) async {
     try {
+      // [TAMBAHAN] Validasi Email Unhas di Pintu Masuk
+      if (!email.endsWith('@student.unhas.ac.id')) {
+        return 'Gunakan email kampus (@student.unhas.ac.id)!';
+      }
+
       await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
       return null; // Berhasil
     } on FirebaseAuthException catch (e) {
-      return e.message; // Gagal
+      if (e.code == 'user-not-found') {
+        return 'Email tidak ditemukan.';
+      } else if (e.code == 'wrong-password') {
+        return 'Password salah.';
+      } else if (e.code == 'invalid-email') {
+        return 'Format email salah.';
+      } else if (e.code == 'user-disabled') {
+        return 'Akun ini telah dinonaktifkan.';
+      }
+      return e.message; // Gagal lainnya
     } catch (e) {
       return "Terjadi kesalahan: $e";
     }
   }
 
-  // --- FUNGSI REGISTER + SIMPAN DATA LENGKAP ---
+  // --- FUNGSI REGISTER (SIGN UP) ---
   Future<String?> signUp({
     required String email,
     required String password,
@@ -34,6 +48,11 @@ class AuthService {
     required String noWhatsapp,
   }) async {
     try {
+      // [SUDAH ADA] Validasi Email Unhas di Pendaftaran
+      if (!email.endsWith('@student.unhas.ac.id')) {
+        return 'Wajib menggunakan email kampus (@student.unhas.ac.id)!';
+      }
+
       // 1. Buat Akun Auth
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
@@ -57,12 +76,37 @@ class AuthService {
 
       return null; // Berhasil
     } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        return 'Email sudah terdaftar.';
+      } else if (e.code == 'weak-password') {
+        return 'Password terlalu lemah.';
+      }
       return e.message;
     } catch (e) {
       return "Gagal mendaftar: $e";
     }
   }
 
+  // --- FUNGSI RESET PASSWORD ---
+  Future<String?> resetPassword({required String email}) async {
+    try {
+      // Validasi juga di sini biar aman
+      if (!email.endsWith('@student.unhas.ac.id')) {
+        return 'Gunakan email kampus (@student.unhas.ac.id)!';
+      }
+      
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null; 
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        return 'Email tidak terdaftar.';
+      }
+      return e.message;
+    } catch (e) {
+      return "Terjadi kesalahan: $e";
+    }
+  }
+  
   // --- LOGOUT ---
   Future<void> signOut() async {
     await _auth.signOut();
