@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/bottom_navbar.dart';
 import '../utils/no_animation_route.dart';
-import '../pages/detail_page.dart'; // pastikan path sesuai
+import '../pages/detail_page.dart'; 
 import 'notifikasi_page.dart';
 import 'sewa/sewa_page.dart';
+// Tambahkan import ProductService
+import '../services/product_service.dart'; 
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,10 +16,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // 1. DEKLARASI PRODUCT SERVICE
+  final ProductService _productService = ProductService();
+
   final TextEditingController searchController = TextEditingController();
   String selectedFilter = "Semua";
 
-  // Dummy data produk
+  // Dummy data produk (Harusnya nanti diganti dengan StreamBuilder dari ProductService)
   final List<Map<String, dynamic>> products = [
     {
       "name": "Kalkulator Ilmiah",
@@ -26,6 +31,7 @@ class _HomePageState extends State<HomePage> {
       "status": "tersedia",
       "location": "Gowa, Jl. Mawar",
       "rentalInfo": null,
+      "id": "prod_001", // Tambahkan ID dummy untuk _likedProducts berfungsi
     },
     {
       "name": "Almamater Unhas",
@@ -34,6 +40,7 @@ class _HomePageState extends State<HomePage> {
       "status": "tersedia",
       "location": "Gowa, Jl. Kenanga",
       "rentalInfo": null,
+      "id": "prod_002",
     },
     {
       "name": "Baju Putih",
@@ -42,6 +49,7 @@ class _HomePageState extends State<HomePage> {
       "status": "tersedia",
       "location": "Gowa, Jl. Flamboyan",
       "rentalInfo": null,
+      "id": "prod_003",
     },
     {
       "name": "Kompor Portable",
@@ -50,6 +58,7 @@ class _HomePageState extends State<HomePage> {
       "status": "tersedia",
       "location": "Tamalanrea",
       "rentalInfo": null,
+      "id": "prod_004",
     },
     {
       "name": "Jas Hitam",
@@ -58,6 +67,7 @@ class _HomePageState extends State<HomePage> {
       "status": "tersedia",
       "location": "Gowa, Jl. Kelapa",
       "rentalInfo": null,
+      "id": "prod_005",
     },
   ];
 
@@ -69,6 +79,27 @@ class _HomePageState extends State<HomePage> {
     "Pakaian",
     "Elektronik",
   ];
+
+  // Daftar ID produk yang disukai
+  List<String> _likedProducts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLikedProducts(); 
+  }
+
+  // 2. FUNGSI UNTUK MEMUAT DATA LIKED PRODUCTS
+  void _loadLikedProducts() async {
+    // Memanggil _productService yang sudah dideklarasikan
+    final List<String> likedIds = await _productService.getLikedProductIds(); 
+    
+    if (mounted) {
+      setState(() {
+        _likedProducts = likedIds;
+      });
+    }
+  }
 
   // === FILTER + SEARCH RESULT ===
   List<Map<String, dynamic>> get filteredProducts {
@@ -227,7 +258,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childAspectRatio: 0.68,
+                  childAspectRatio: 0.73,
                 ),
                 itemBuilder: (context, index) {
                   final item = filteredProducts[index];
@@ -248,6 +279,8 @@ class _HomePageState extends State<HomePage> {
 
   // === CARD PRODUK + NAVIGASI KE DETAIL ===
   Widget _buildProductCard(BuildContext context, Map<String, dynamic> item) {
+    // Tentukan apakah produk ini disukai atau tidak untuk ikon hati
+    final bool isProductLiked = _likedProducts.contains(item['id']);
     final bool isRented = item["status"] == "disewa";
 
     return GestureDetector(
@@ -256,12 +289,17 @@ class _HomePageState extends State<HomePage> {
         await Navigator.push(
           context,
           NoAnimationPageRoute(
-            page: DetailPage(product: item),
+            page: DetailPage(
+              product: item,
+              isOwnerView: false,
+              likedProducts: _likedProducts,
+            ),
           ),
         );
 
-        // Setelah kembali dari DetailPage, refresh state untuk overlay terbaru
-        setState(() {});
+        // Setelah kembali dari DetailPage (misalnya user melakukan like/unlike)
+        // Muat ulang daftar produk yang disukai
+        _loadLikedProducts();
       },
       child: Stack(
         children: [
@@ -278,14 +316,14 @@ class _HomePageState extends State<HomePage> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    height: 110,
+                    height: 150,
                     width: double.infinity,
                     color: Colors.grey[200],
                     child: const Icon(Icons.image, size: 50),
                   ),
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
                 Text(
                   item["name"],
@@ -312,19 +350,24 @@ class _HomePageState extends State<HomePage> {
 
                 const Spacer(),
 
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("⭐ 4.9 | 21 tersewa", style: TextStyle(fontSize: 11)),
+                    const Text("⭐ 4.9 | 21 tersewa", style: TextStyle(fontSize: 11)),
+                    // Tampilkan ikon hati berdasarkan status like
                     Row(
                       children: [
-                        Icon(Icons.favorite, color: Colors.red, size: 16),
-                        SizedBox(width: 2),
-                        Text("20", style: TextStyle(fontSize: 12)),
+                        Icon(
+                          isProductLiked ? Icons.favorite : Icons.favorite_border,
+                          color: isProductLiked ? Colors.red : Colors.grey, 
+                          size: 16,
+                        ),
+                        const SizedBox(width: 2),
+                        const Text("20", style: TextStyle(fontSize: 12)),
                       ],
                     )
                   ],
-                )
+                ) 
               ],
             ),
           ),
