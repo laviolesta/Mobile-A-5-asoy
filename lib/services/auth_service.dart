@@ -65,6 +65,18 @@ class AuthService {
         'created_at': FieldValue.serverTimestamp(),
       });
 
+      final newUser = UserModel(
+      id: uid,
+      nama_lengkap: nama,
+      email: email,
+      nim: nim,
+      fakultas: fakultas,
+      jurusan: jurusan,
+      no_whatsapp: noWhatsapp,
+    );
+
+      await UserService().createNewUser(newUser);
+
       return null;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') return 'Email sudah terdaftar.';

@@ -234,7 +234,7 @@ packages:
     source: hosted
     version: "3.3.0"
   firebase_storage:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: firebase_storage
       sha256: "3438f38590186010ce76ece683ebf3b842cd637f31f83a13620917d7438a58fd"
@@ -416,8 +416,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.3.3"
-  gsettings:
-    dependency: transitive
+  http:
+    dependency: "direct main"
     description:
       name: gsettings
       sha256: "1b0ce661f5436d2db1e51f3c4295a49849f03d304003a7ba177d01e3a858249c"
@@ -449,7 +449,7 @@ packages:
     source: hosted
     version: "4.5.4"
   image_picker:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: image_picker
       sha256: "784210112be18ea55f69d7076e2c656a4e24949fa9e76429fe53af0c0f4fa320"
