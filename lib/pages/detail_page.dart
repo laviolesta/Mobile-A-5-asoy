@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'owner_profile_page.dart';
 
 // Import services dan model (Asumsi path ini benar)
-import '../../services/product_service.dart'; 
+import '../../services/product_service.dart';
 
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -32,7 +32,7 @@ class _DetailPageState extends State<DetailPage> {
     // PERBAIKAN: Pastikan 'id' adalah String sebelum membandingkan.
     // Gunakan 'as String?' dan null-check pada id.
     final productId = widget.product['id'] as String?;
-    
+
     // Inisialisasi status like: jika productId null, anggap tidak disukai (false).
     isLiked = productId != null && widget.likedProducts.contains(productId);
   }
@@ -41,11 +41,11 @@ class _DetailPageState extends State<DetailPage> {
     // Pastikan 'id' adalah String dan tidak null
     final productId = widget.product['id'] as String?;
     if (productId == null) return;
-    
+
     // Asumsi ProductService memiliki metode toggleLike
     final success = await _productService.toggleProductLike(
         productId, !isLiked); // Menggunakan productId yang sudah pasti String
-    
+
     if (success) {
       setState(() {
         isLiked = !isLiked;
@@ -59,14 +59,14 @@ class _DetailPageState extends State<DetailPage> {
 
   Future<void> _openWhatsApp() async {
     // Gunakan nomor pemilik dari data produk jika tersedia
-    final ownerPhone = widget.product['ownerPhone'] ?? '6281234567890'; 
+    final ownerPhone = widget.product['ownerPhone'] ?? '6281234567890';
     final Uri whatsapp = Uri.parse("https://wa.me/$ownerPhone");
-    
+
     // PERBAIKAN: Gunakan .toString() pada Uri untuk canLaunchUrl agar lebih kompatibel dengan versi terbaru
     if (await canLaunchUrl(whatsapp)) {
       await launchUrl(whatsapp, mode: LaunchMode.externalApplication);
     } else {
-       ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal membuka WhatsApp')),
       );
     }
@@ -102,8 +102,8 @@ class _DetailPageState extends State<DetailPage> {
           title: const Text("Konfirmasi Penyewaan"),
           content: Text(
               "Anda menyewa produk dari ${start.day}/${start.month}/${start.year} "
-              "sampai ${end.day}/${end.month}/${end.year} "
-              "(${duration} hari)"),
+                  "sampai ${end.day}/${end.month}/${end.year} "
+                  "(${duration} hari)"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -165,7 +165,7 @@ class _DetailPageState extends State<DetailPage> {
                   /// IMAGE
                   Center(
                     child: Image.network(
-                      widget.product["imageUrl"] ?? "https://via.placeholder.com/260", 
+                      widget.product["imageUrl"] ?? "https://via.placeholder.com/260",
                       height: 260,
                     ),
                   ),
@@ -188,7 +188,7 @@ class _DetailPageState extends State<DetailPage> {
                   /// PRICE + TERSEWA + LOVE
                   Padding(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -200,8 +200,8 @@ class _DetailPageState extends State<DetailPage> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              "${widget.product["rentedCount"] ?? 0} tersewa", 
-                              style: const TextStyle(fontSize: 12)
+                                "${widget.product["rentedCount"] ?? 0} tersewa",
+                                style: const TextStyle(fontSize: 12)
                             ),
                             const SizedBox(height: 4),
                             // Love count hanya muncul jika BUKAN Owner View
@@ -326,9 +326,9 @@ class _DetailPageState extends State<DetailPage> {
                         const SizedBox(height: 80),
                       ],
                     ),
-                  
+
                   // Jarak tambahan jika Owner View, karena BottomBar akan hilang
-                  if (widget.isOwnerView) 
+                  if (widget.isOwnerView)
                     const SizedBox(height: 20),
                 ],
               ),
@@ -341,49 +341,49 @@ class _DetailPageState extends State<DetailPage> {
       bottomNavigationBar: widget.isOwnerView
           ? null // Return null jika Owner View (menghilangkan BottomBar)
           : Container(
-              padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Colors.black12)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _openWhatsApp,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const FaIcon(
-                        FontAwesomeIcons.whatsapp,
-                        color: Colors.white,
-                      ),
-                      label: const Text(
-                        "Chat Pemilik",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
+        padding: const EdgeInsets.all(12),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.black12)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _openWhatsApp,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _showRentDialog,
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: const Color(0xFF205781), // Warna Primer
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text("Ajukan Sewa"),
-                    ),
-                  )
-                ],
+                ),
+                icon: const FaIcon(
+                  FontAwesomeIcons.whatsapp,
+                  color: Colors.white,
+                ),
+                label: const Text(
+                  "Chat Pemilik",
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _showRentDialog,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: const Color(0xFF205781), // Warna Primer
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text("Ajukan Sewa"),
+              ),
+            )
+          ],
+        ),
+      ),
     );
   }
 }

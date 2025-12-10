@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/bottom_navbar.dart';
 import '../utils/no_animation_route.dart';
-import '../pages/detail_page.dart'; 
+import '../pages/detail_page.dart';
 import 'notifikasi_page.dart';
 import 'sewa/sewa_page.dart';
 // Tambahkan import ProductService
-import '../services/product_service.dart'; 
+import '../services/product_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,7 +31,7 @@ class _HomePageState extends State<HomePage> {
       "status": "tersedia",
       "location": "Gowa, Jl. Mawar",
       "rentalInfo": null,
-      "id": "prod_001", // Tambahkan ID dummy untuk _likedProducts berfungsi
+      "id": "prod_001",
     },
     {
       "name": "Almamater Unhas",
@@ -86,14 +86,13 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadLikedProducts(); 
+    _loadLikedProducts();
   }
 
   // 2. FUNGSI UNTUK MEMUAT DATA LIKED PRODUCTS
   void _loadLikedProducts() async {
-    // Memanggil _productService yang sudah dideklarasikan
-    final List<String> likedIds = await _productService.getLikedProductIds(); 
-    
+    final List<String> likedIds = await _productService.getLikedProductIds();
+
     if (mounted) {
       setState(() {
         _likedProducts = likedIds;
@@ -181,6 +180,31 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Ambil ukuran layar untuk membuat grid responsif
+    final double screenWidth = MediaQuery.of(context).size.width;
+    // padding horizontal yang dipakai di GridView
+    const double horizontalPadding = 16.0 * 2; // kiri+kanan
+    const double gridSpacing = 12.0;
+
+    // Tentukan crossAxisCount berdasarkan lebar layar
+    int crossAxisCount = 2;
+    if (screenWidth >= 900) {
+      crossAxisCount = 4;
+    } else if (screenWidth >= 700) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 2;
+    }
+
+    // Hitung lebar item (tersisa setelah padding & spacing)
+    final double usableWidth = screenWidth - horizontalPadding - (gridSpacing * (crossAxisCount - 1));
+    final double itemWidth = usableWidth / crossAxisCount;
+
+    // Tentukan target tinggi kartu (relatif)
+    // Gunakan rasio yang nyaman sehingga konten tidak saling bertumpuk
+    final double itemHeight = itemWidth * 1.25; // sedikit lebih tinggi dari lebar
+    final double childAspectRatio = itemWidth / itemHeight;
+
     return Scaffold(
       body: Column(
         children: [
@@ -254,15 +278,15 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.builder(
                 itemCount: filteredProducts.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.73,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: gridSpacing,
+                  crossAxisSpacing: gridSpacing,
+                  childAspectRatio: childAspectRatio,
                 ),
                 itemBuilder: (context, index) {
                   final item = filteredProducts[index];
-                  return _buildProductCard(context, item);
+                  return _buildProductCard(context, item, itemWidth, itemHeight);
                 },
               ),
             ),
@@ -278,14 +302,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   // === CARD PRODUK + NAVIGASI KE DETAIL ===
-  Widget _buildProductCard(BuildContext context, Map<String, dynamic> item) {
+  Widget _buildProductCard(BuildContext context, Map<String, dynamic> item, double itemWidth, double itemHeight) {
     // Tentukan apakah produk ini disukai atau tidak untuk ikon hati
     final bool isProductLiked = _likedProducts.contains(item['id']);
     final bool isRented = item["status"] == "disewa";
 
+    // kalkulasi image height berdasarkan lebar item
+    final double imageHeight = itemWidth * 0.55; // sekitar 55% dari lebar
+
     return GestureDetector(
       onTap: () async {
-        // Navigasi ke DetailPage
         await Navigator.push(
           context,
           NoAnimationPageRoute(
@@ -296,9 +322,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         );
-
-        // Setelah kembali dari DetailPage (misalnya user melakukan like/unlike)
-        // Muat ulang daftar produk yang disukai
         _loadLikedProducts();
       },
       child: Stack(
@@ -309,66 +332,76 @@ class _HomePageState extends State<HomePage> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Gambar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    height: 150,
-                    width: double.infinity,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image, size: 50),
+            child: SizedBox(
+              // Gunakan ukuran eksplisit agar isi menyesuaikan tinggi
+              width: itemWidth,
+              height: itemHeight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Gambar (responsif)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: imageHeight,
+                      width: double.infinity,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.image, size: 50),
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 10),
+                  const SizedBox(height: 8),
 
-                Text(
-                  item["name"],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                  Text(
+                    item["name"],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
 
-                Text(
-                  item["price"],
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
+                  Text(
+                    item["price"],
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
 
-                const SizedBox(height: 2),
+                  const SizedBox(height: 4),
 
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 12, color: Colors.grey),
-                    const SizedBox(width: 2),
-                    Text(
-                      item["location"],
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    )
-                  ],
-                ),
-
-                const Spacer(),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("⭐ 4.9 | 21 tersewa", style: TextStyle(fontSize: 11)),
-                    // Tampilkan ikon hati berdasarkan status like
-                    Row(
-                      children: [
-                        Icon(
-                          isProductLiked ? Icons.favorite : Icons.favorite_border,
-                          color: isProductLiked ? Colors.red : Colors.grey, 
-                          size: 16,
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          item["location"],
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 2),
-                        const Text("20", style: TextStyle(fontSize: 12)),
-                      ],
-                    )
-                  ],
-                ) 
-              ],
+                      )
+                    ],
+                  ),
+
+                  const Spacer(),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("⭐ 4.9 | 21 tersewa", style: TextStyle(fontSize: 11)),
+                      Row(
+                        children: [
+                          Icon(
+                            isProductLiked ? Icons.favorite : Icons.favorite_border,
+                            color: isProductLiked ? Colors.red : Colors.grey,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          const Text("20", style: TextStyle(fontSize: 12)),
+                        ],
+                      )
+                    ],
+                  )
+                ],
+              ),
             ),
           ),
 
