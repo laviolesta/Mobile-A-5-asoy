@@ -5,9 +5,10 @@ import 'owner_profile_page.dart';
 
 // Import services
 import '../../services/product_service.dart';
-import '../../services/user_service.dart'; // ⬅️ IMPORT USER SERVICE
+import '../../services/user_service.dart';
+import '../../services/notif_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // ⬅️ IMPORT FIREBASE AUTH
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Import Halaman Tujuan
 import 'sewa/sewa_page.dart';
@@ -31,8 +32,8 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   final ProductService _productService = ProductService();
-  final UserService _userService = UserService(); // ⬅️ INISIALISASI USER SERVICE
-  final FirebaseAuth _auth = FirebaseAuth.instance; // ⬅️ INISIALISASI FIREBASE AUTH
+  final UserService _userService = UserService();
+  final FirebaseAuth _auth = FirebaseAuth.instance; 
 
   late bool isLiked;
   late int currentLikesCount;
@@ -120,6 +121,22 @@ class _DetailPageState extends State<DetailPage> {
     }
   }
 
+  Future<String> _getCurrentUserName() async {
+  final currentUserId = _auth.currentUser?.uid;
+  if (currentUserId == null) {
+    return 'Pengguna Tidak Terautentikasi';
+  }
+
+  try {
+    final userData = await _userService.getUserData(currentUserId);
+    
+    return userData?['nama_lengkap'] ?? 'Pengguna #${currentUserId.substring(0, 5)}';
+  } catch (e) {
+    print("Error mengambil data pengguna: $e");
+    return 'Pengguna Anonim';
+  }
+}
+
   void _showRentDialog() async {
     final DateTimeRange? pickedDate = await showDateRangePicker(
       context: context,
@@ -185,6 +202,22 @@ class _DetailPageState extends State<DetailPage> {
                 );
 
                 if (mounted) {
+                  if (result == null) {
+                    final currentUserName = await _getCurrentUserName();
+                    final productName = widget.product["name"] ?? 'Produk Tidak Diketahui';
+
+                    try {
+                      await NotificationService.createNotification(
+                        title: "Permintaan Sewa Baru: $productName",
+                        description: "$currentUserName telah mengajukan permintaan sewa untuk produk Anda selama $duration hari. Silakan cek halaman Sewa untuk konfirmasi.",
+                        userId: ownerId,
+                        productId: productId,
+                      );
+                    } catch (e) {
+                      print("Gagal mengirim notifikasi ke pemilik: $e"); 
+                    }
+                  }
+
                   if (result == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(

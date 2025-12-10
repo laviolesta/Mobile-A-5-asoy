@@ -173,4 +173,18 @@ class UserService {
       }).toList();
     });
   }
+
+  // 9. Fungsi ambil data user sekali jalan (non-stream)
+  Future<Map<String, dynamic>?> getUserData(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      print("Gagal mengambil data pengguna: $e");
+      return null;
+    }
+  }
 }

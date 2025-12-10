@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// import '../../widgets/header_widget.dart'; // Dihapus karena akan dibuat inline
 
 // Contoh data produk yang akan diedit
 const Map<String, dynamic> dummyProductToEdit = {

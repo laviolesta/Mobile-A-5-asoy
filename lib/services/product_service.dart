@@ -390,4 +390,23 @@ class ProductService {
       return [];
     }
   }
+
+  // FUNGSI UNTUK MENDAPATKAN DETAIL PRODUK BERDASARKAN ID
+  Future<Map<String, dynamic>?> getProductById(String productId) async {
+    try {
+      final docSnapshot = await _firestore.collection('products').doc(productId).get();
+
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        // Ambil data, dan pastikan ID dokumen dimasukkan ke dalam Map
+        Map<String, dynamic> data = docSnapshot.data()!;
+        data['id'] = docSnapshot.id;
+        return data;
+      }
+      return null; // Produk tidak ditemukan
+    } catch (e) {
+      print("Error fetching product by ID: $e");
+      // Lempar error untuk ditangani di NotifDetailPage
+      throw Exception("Gagal mengambil data produk: $e");
+    }
+  }
 }
