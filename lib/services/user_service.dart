@@ -7,8 +7,8 @@ import 'dart:convert';
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  static const String CLOUDINARY_CLOUD_NAME = 'nama_cloud_anda'; 
-  static const String CLOUDINARY_UPLOAD_PRESET = 'FLUTTER_PROFILE_PRESET'; 
+  static const String CLOUDINARY_CLOUD_NAME = 'diksekwav';
+  static const String CLOUDINARY_UPLOAD_PRESET = 'profile_upload'; 
 
   final String _collection = 'users';
 
@@ -167,7 +167,6 @@ class UserService {
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
-        // 🟢 Koreksi: Hapus '!' karena data() dari QueryDocumentSnapshot tidak null
         return {'id': doc.id, ...data};
       }).toList();
     });
@@ -184,6 +183,39 @@ class UserService {
     } catch (e) {
       print("Gagal mengambil data pengguna: $e");
       return null;
+    }
+  }
+
+  Future<String> uploadProfilePhotoFromBytes(String userId, List<int> imageBytes, String mimeType) async {
+    try {
+      String base64Image = base64Encode(imageBytes);
+
+      final cloudinaryUrl = 'https://api.cloudinary.com/v1_1/$CLOUDINARY_CLOUD_NAME/image/upload';
+
+      final Map<String, String> body = {
+        // 🔥 Kirim Base64 data secara langsung
+        'file': 'data:$mimeType;base64,$base64Image', 
+        'upload_preset': CLOUDINARY_UPLOAD_PRESET,
+        'public_id': 'profile_$userId',
+        'folder': 'user_profiles',
+      };
+
+      final response = await http.post(
+        Uri.parse(cloudinaryUrl),
+        body: body,
+      );
+      
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData['secure_url'];
+      } else {
+        final errorBody = json.decode(response.body);
+        print("Cloudinary Error Body: $errorBody");
+        throw Exception('Gagal mengupload foto ke Cloudinary. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Error saat mencoba upload ke Cloudinary: $e");
+      rethrow;
     }
   }
 }

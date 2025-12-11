@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../widgets/profil_header_widget.dart';
 import '../widgets/product_card_widget.dart';
 import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
+import '../pages/detail_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,6 +24,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   bool _isEditing = false;
   List<String> _likedIdsToRemove = [];
+
+  void _navigateToProductDetail(String productId) {
+  if (mounted) {
+    Navigator.of(context).pushNamed('/productDetail', arguments: productId); 
+  }
+}
 
   void _showSnackbar(String message) {
     if (mounted) {
@@ -183,10 +191,14 @@ class _ProfilePageState extends State<ProfilePage> {
       _showSnackbar('Memulai proses upload foto...');
 
       try {
-        final String downloadURL = await _userService.uploadProfilePhoto(
-          currentUserId,
-          pickedFile.path,
-        );
+        final List<int> imageBytes = await pickedFile.readAsBytes(); 
+        final String mimeType = pickedFile.mimeType ?? 'image/jpeg'; // Dapatkan mime type
+      
+        final String downloadURL = await _userService.uploadProfilePhotoFromBytes( // 
+        currentUserId,
+        imageBytes,
+        mimeType,
+      );
 
         await _userService.updateProfilePhotoUrl(
           currentUserId,
@@ -246,7 +258,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   }
 
                   if (snapshot.hasData) {
-                    final UserModel user = snapshot.data!;
+                    final UserModel user = snapshot.data!; 
                     final List<String> likedProducts = user.liked_products ?? [];
 
                     return Column(
@@ -394,7 +406,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   return Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      ProductCardWidget(product: product),
+                      GestureDetector(
+                        onTap: () => _navigateToProductDetail(productId),
+                        child: ProductCardWidget(product: product),
+                      ),
 
                       if (_isEditing)
                         Positioned(
