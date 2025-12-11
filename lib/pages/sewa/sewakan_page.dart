@@ -208,22 +208,20 @@ class _SewakanPageState extends State<SewakanPage> {
       children: [
         GestureDetector(
           // 💡 PERBAIKAN 1: Menonaktifkan klik jika sedang disewa
-          onTap: isRented
-              ? null
-              : () async {
-                  // Navigasi ke DetailPage (Hanya jika tidak disewa)
-                  await Navigator.push(
-                    context,
-                    NoAnimationPageRoute(
-                      page: DetailPage(
-                        product: productDataForDetail,
-                        isOwnerView: true,
-                        likedProducts: _likedProducts,
-                      ),
-                    ),
-                  );
-                  _loadLikedProducts();
-                },
+          onTap: () async {
+            // Navigasi ke DetailPage (Hanya jika tidak disewa)
+            await Navigator.push(
+              context,
+              NoAnimationPageRoute(
+                page: DetailPage(
+                  product: productDataForDetail,
+                  isOwnerView: true,
+                  likedProducts: _likedProducts,
+                ),
+              ),
+            );
+            _loadLikedProducts();
+          },
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -361,104 +359,95 @@ class _SewakanPageState extends State<SewakanPage> {
               borderRadius: BorderRadius.circular(20),
             ),
             // 💡 PERBAIKAN 2: Nonaktifkan PopupMenuButton jika sedang disewa
-            child: isRented
-                ? const SizedBox.shrink() // Sembunyikan tombol jika disewa
-                : PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    padding: EdgeInsets.zero,
-                    onSelected: (String result) async {
-                      if (result == 'edit') {
-                        final updatedProduct = await Navigator.push(
-                          context,
-                          NoAnimationPageRoute(
-                            page: EditProductPage(product: productDataForEdit),
-                          ),
-                        );
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              padding: EdgeInsets.zero,
+              onSelected: (String result) async {
+                if (result == 'edit') {
+                  final updatedProduct = await Navigator.push(
+                    context,
+                    NoAnimationPageRoute(
+                      page: EditProductPage(product: productDataForEdit),
+                    ),
+                  );
 
-                        // Jika ada perubahan → refresh UI
-                        if (updatedProduct != null) {
-                          setState(
-                            () {},
-                          ); // memaksa rebuild agar data baru muncul
-                        }
-                      } else if (result == 'delete') {
-                        // LOGIKA HAPUS DENGAN KONFIRMASI
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text("Hapus Produk"),
-                            content: Text(
-                              "Anda yakin ingin menghapus produk '$name'? Tindakan ini tidak dapat dibatalkan.",
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text("Batal"),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text(
-                                  "Hapus",
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ),
-                            ],
+                  // Jika ada perubahan → refresh UI
+                  if (updatedProduct != null) {
+                    setState(() {}); // memaksa rebuild agar data baru muncul
+                  }
+                } else if (result == 'delete') {
+                  // LOGIKA HAPUS DENGAN KONFIRMASI
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Hapus Produk"),
+                      content: Text(
+                        "Anda yakin ingin menghapus produk '$name'? Tindakan ini tidak dapat dibatalkan.",
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text("Batal"),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text(
+                            "Hapus",
+                            style: TextStyle(color: Colors.red),
                           ),
-                        );
+                        ),
+                      ],
+                    ),
+                  );
 
-                        if (confirm == true) {
-                          final error = await _productService.deleteProduct(
-                            productDoc.id,
-                          );
-                          if (error == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Produk $name berhasil dihapus.'),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Gagal menghapus: $error'),
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    itemBuilder: (BuildContext context) =>
-                        <PopupMenuEntry<String>>[
-                          const PopupMenuItem<String>(
-                            value: 'edit',
-                            child: Text('Edit Produk'),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'delete',
-                            child: Text(
-                              'Hapus',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
+                  if (confirm == true) {
+                    final error = await _productService.deleteProduct(
+                      productDoc.id,
+                    );
+                    if (error == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Produk $name berhasil dihapus.'),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Gagal menghapus: $error')),
+                      );
+                    }
+                  }
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'edit', child: Text('Edit Produk')),
+                if (!isRented)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Hapus', style: TextStyle(color: Colors.red)),
                   ),
+              ],
+            ),
           ),
         ),
 
         // Overlay Status DISEWA
         if (isRented)
           Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Center(
-                child: Text(
-                  "DISEWA",
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+            child: IgnorePointer(
+              ignoring: true,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: Text(
+                    "DISEWA",
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
